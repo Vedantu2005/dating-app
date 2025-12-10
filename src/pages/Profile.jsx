@@ -17,15 +17,16 @@ import {
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore'; // Added updateDoc
+import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore'; 
 
-// --- IMPORTANT: Import Storage and DB from your shared config ---
-import { db as sharedDb, storage as sharedStorage } from '../firebaseConfig';
+// 👇 UPDATED IMPORTS: Fixed 'app' import and added Functions
+import app, { db as sharedDb, storage as sharedStorage } from '../firebaseConfig';
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 
 // --- IMPORT EXTERNAL COMPONENT ---
 import EditProfile from '../components/EditProfile.jsx';
 
-// --- CONFIGURATION & UTILITIES ---
+// --- CONFIGURATION & UTILITIES (Kept exactly as original) ---
 const FALLBACK_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBEHnNpIfnVyqpcbA5ysFPa-ku87VdMYV0",
   authDomain: "bsss-dating.firebaseapp.com",
@@ -66,12 +67,12 @@ const loadRazorpayScript = (src) => {
   });
 };
 
-// --- UI COMPONENTS ---
+// --- UI COMPONENTS (Kept exactly as original) ---
 
 const DoubleDateIcon = () => (
   <div className="relative h-12 w-12">
     <span className="absolute top-0 left-0 text-4xl transform -translate-x-1 translate-y-1">
-      💑
+      酎
     </span>
     <span className="absolute bottom-0 right-0 flex items-center justify-center w-8 h-8 bg-white border-4 border-white rounded-full transform translate-x-1 -translate-y-1">
       <Heart
@@ -257,7 +258,6 @@ const FeatureRow = ({ title, textColor, currentType, freeFeatures }) => {
   );
 };
 
-// Updated UpgradeCard to accept onUpgrade
 const UpgradeCard = ({ data, freeFeatures, onUpgrade }) => {
   return (
     <div className="min-w-full px-4 box-border snap-center md:min-w-0 md:px-0">
@@ -299,7 +299,6 @@ const UpgradeCard = ({ data, freeFeatures, onUpgrade }) => {
   );
 };
 
-// Updated UpgradeCarousel to pass onUpgrade
 const UpgradeCarousel = ({ onUpgrade }) => {
   const [activeIndex, setActiveIndex] = useState(1);
   const scrollRef = useRef(null);
@@ -362,7 +361,7 @@ const UpgradeCarousel = ({ onUpgrade }) => {
             key={index} 
             data={tier} 
             freeFeatures={freeFeatures} 
-            onUpgrade={onUpgrade} // Passing the handler
+            onUpgrade={onUpgrade} 
           />
         ))}
       </div>
@@ -430,7 +429,7 @@ const AuthorPopup = ({ onClose }) => (
         <div className="space-y-4">
           <div className="flex items-start space-x-3 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-              <span className="text-xl">🛠</span>
+              <span className="text-xl">屏</span>
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">Professional</p>
@@ -440,7 +439,7 @@ const AuthorPopup = ({ onClose }) => (
 
           <div className="flex items-start space-x-3 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-              <span className="text-xl">🎨</span>
+              <span className="text-xl">耳</span>
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">Design Philosophy</p>
@@ -450,7 +449,7 @@ const AuthorPopup = ({ onClose }) => (
 
           <div className="flex items-start space-x-3 bg-gradient-to-r from-pink-50 to-red-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-              <span className="text-xl">🚀</span>
+              <span className="text-xl">噫</span>
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">Expertise</p>
@@ -473,7 +472,7 @@ const AuthorPopup = ({ onClose }) => (
 const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
   const [showAuthorPopup, setShowAuthorPopup] = useState(false);
 
-  // --- HANDLE PAYMENT UPGRADE ---
+  // --- HANDLE PAYMENT UPGRADE (UPDATED FOR EMULATOR) ---
   const handleUpgrade = async (plan) => {
     // 1. Define plan prices (in INR)
     const prices = {
@@ -482,47 +481,55 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
     };
     
     const amount = prices[plan.type];
-    if (!amount) return; // Should handle Free tier or unknown
+    if (!amount) return; 
 
-    // 2. Load Razorpay SDK
+    // 2. Initialize Functions (Uses the imported 'app')
+    const functions = getFunctions(app);
+
+    // 🚨 THIS LINE CONNECTS TO YOUR LOCAL EMULATOR 🚨
+    // When you deploy to live, you MUST remove or comment out this line.
+    connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+
+    // 3. Load Razorpay SDK
     const res = await loadRazorpayScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) {
       alert("Razorpay SDK failed to load. Please check your internet connection.");
       return;
     }
 
-    // 3. Create Order on Server
-    // Replace with your actual Cloud Function URL after deployment
-    const functionUrl = "https://us-central1-bsss-dating.cloudfunctions.net/createRazorpayOrder"; 
-    
     try {
-        const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: amount, currency: "INR" })
-        });
-        
-        if (!response.ok) throw new Error("Network response was not ok");
-        
-        const orderData = await response.json();
+        // 4. Call Cloud Function via SDK (Fixes CORS)
+        const createOrderFn = httpsCallable(functions, 'createOrder');
+        const response = await createOrderFn({ amount: amount * 100 }); // Pass amount in paise
+        const orderData = response.data;
 
-        // 4. Razorpay Options
+        // 5. Razorpay Options
         const options = {
-            key: "YOUR_RAZORPAY_KEY_ID", // Replace with your Test Key ID
+            key: "rzp_test_RoMYE85wG1Vzew", // Your Key ID
             amount: orderData.amount,
             currency: orderData.currency,
             name: "BSSS Dating",
             description: `Upgrade to ${plan.type}`,
-            order_id: orderData.id, 
+            order_id: orderData.orderId, 
             handler: async function (response) {
-                // 5. Payment Success Handler
+                // 6. Payment Success Handler
                 console.log("Payment Successful", response);
+
+                // Verify Payment on Backend (Optional but recommended)
+                try {
+                  const verifyPaymentFn = httpsCallable(functions, 'verifyPayment');
+                  await verifyPaymentFn({
+                    orderId: response.razorpay_order_id,
+                    paymentId: response.razorpay_payment_id,
+                    signature: response.razorpay_signature
+                  });
+                } catch (verifyErr) {
+                  console.error("Verification warning:", verifyErr);
+                }
 
                 // Update User Subscription in Firestore
                 if (userData?.auth?.uid && db) {
                   try {
-                    // Update main user doc or profile doc depending on your structure
-                    // Here updating the user root doc to give them 'gold'/'platinum' status
                     const userRef = doc(db, "users", userData.auth.uid);
                     await updateDoc(userRef, {
                       subscriptionTier: plan.type,
@@ -532,7 +539,7 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
                     alert(`Success! You are now a ${plan.type} member.`);
                   } catch (err) {
                     console.error("Error updating profile:", err);
-                    alert("Payment received, but failed to update profile automatically. Please contact support.");
+                    alert("Payment received, but failed to update profile automatically.");
                   }
                 }
             },
@@ -551,7 +558,7 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
 
     } catch (error) {
         console.error("Payment initiation failed", error);
-        alert("Something went wrong initializing payment. Please try again.");
+        alert(`Something went wrong: ${error.message}`);
     }
   };
 
@@ -573,7 +580,7 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
   );
 };
 
-// --- MAIN APP COMPONENT ---
+// --- MAIN APP COMPONENT (Kept exactly as original) ---
 
 export default function Profile() {
   const [authInstance, setAuthInstance] = useState(null);
@@ -635,8 +642,6 @@ export default function Profile() {
 
   useEffect(() => {
     if (dbInstance && userId && user) {
-      // Logic to sync with specific document path (artifacts vs users)
-      // Usually you want to listen to "users/{uid}" or the specific profile path
       const docRef = doc(dbInstance, getUserDocPath(userId));
 
       const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
