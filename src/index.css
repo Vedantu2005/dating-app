@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+
+
+/* ulitity class  */
+.hello{
+    border: 2px solid red;
+}
