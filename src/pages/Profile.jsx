@@ -69,17 +69,13 @@ const loadRazorpayScript = (src) => {
 // --- UI COMPONENTS ---
 
 const DoubleDateIcon = () => (
-  <div className="relative h-12 w-12">
-    <span className="absolute top-0 left-0 text-4xl transform -translate-x-1 translate-y-1">
-      酎
-    </span>
-    <span className="absolute bottom-0 right-0 flex items-center justify-center w-8 h-8 bg-white border-4 border-white rounded-full transform translate-x-1 -translate-y-1">
-      <Heart
-        size={20}
-        fill="currentColor"
-        className="text-pink-500"
-      />
-    </span>
+  // "flex items-center justify-center" ensures the heart is exactly in the middle
+  <div className="flex items-center justify-center w-12 h-12 bg-pink-100 rounded-full">
+    <Heart
+      size={24}
+      fill="currentColor"
+      className="text-pink-500"
+    />
   </div>
 );
 
