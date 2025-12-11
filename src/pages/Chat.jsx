@@ -14,8 +14,8 @@ import {
   Loader2,
   LogOut,
 } from "lucide-react";
-import { db, storage, auth, realtimeDB } from "../firebaseConfig"; // Ensure these are exported from your config
-import { useAuth } from "../context/AuthContext"; // Ensure you have this context
+import { db, storage, auth, realtimeDB } from "../firebaseConfig";
+import { useAuth } from "../context/AuthContext";
 import {
   collection,
   query,
@@ -26,7 +26,6 @@ import {
   where,
   doc,
 } from "firebase/firestore";
-// import {getDatabase,ref,onValue, onDisconnect,set} from 'firebase/database'
 import {
   ref as storageRef,
   uploadBytes,
@@ -35,7 +34,7 @@ import {
 import { signOut } from "firebase/auth";
 import { ref as rtdbRef, onValue, onDisconnect, set } from "firebase/database";
 
-// --- STYLES (From First Code) ---
+// --- STYLES ---
 const customStyles = `
   @keyframes slideIn {
     from { opacity: 0; transform: translateX(-20px); }
@@ -45,12 +44,14 @@ const customStyles = `
     from { opacity: 0; }
     to { opacity: 1; }
   }
-  * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  *::-webkit-scrollbar {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
 `;
 
@@ -65,23 +66,19 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statuses, setStatuses] = useState({});
-const [currentUserData, setCurrentUserData] = useState(null);
+  const [currentUserData, setCurrentUserData] = useState(null);
 
-  const preference=currentUserData?.gender==='male'?'female':"male";
-   useEffect(() => {
+  const preference = currentUserData?.gender === 'male' ? 'female' : "male";
+
+  useEffect(() => {
     if (!currentUserId) return;
-
     const userRef = doc(db, "users", currentUserId);
-
     const unsub = onSnapshot(userRef, (snap) => {
-        setCurrentUserData(snap.data());
+      setCurrentUserData(snap.data());
     });
-
     return () => unsub();
-}, [currentUserId]);
+  }, [currentUserId]);
 
-
-  // Fetch Users Logic (From Second Code)
   useEffect(() => {
     if (!currentUserId || !preference) {
       setIsLoading(false);
@@ -94,7 +91,7 @@ const [currentUserData, setCurrentUserData] = useState(null);
     });
 
     const usersRef = collection(db, "users");
-    const usersQuery = query(usersRef,where('gender','==',preference), orderBy("displayName", "asc"));
+    const usersQuery = query(usersRef, where('gender', '==', preference), orderBy("displayName", "asc"));
 
     const unsubscribe = onSnapshot(
       usersQuery,
@@ -110,7 +107,7 @@ const [currentUserData, setCurrentUserData] = useState(null);
 
         setUsers(
           fetchedUsers.map((user) => ({
-            id: user.uid || user.id, // Fallback to doc ID if uid not in data
+            id: user.uid || user.id,
             name: user.displayName || "User",
             avatarUrl: user.avatarUrl || user.displayName?.charAt(0) || "?",
             chatId: getChatId(currentUserId, user.uid || user.id),
@@ -131,7 +128,7 @@ const [currentUserData, setCurrentUserData] = useState(null);
       unsubscribe();
       unsubStatus();
     };
-  }, [currentUserId, searchTerm,preference]);
+  }, [currentUserId, searchTerm, preference]);
 
   const handleLogout = async () => {
     try {
@@ -149,15 +146,15 @@ const [currentUserData, setCurrentUserData] = useState(null);
     );
   }
 
-  // For UI demo purposes, we treat the first few users as "New Matches"
   const newMatches = users.slice(0, 5);
   const existingChats = users;
 
   return (
     <>
       <style>{customStyles}</style>
-      {/* Header */}
-      <div className="p-6 border-b border-purple-200 bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+      
+      {/* 1. FIXED HEADER: This stays stuck at the top */}
+      <div className="p-6 border-b border-purple-200 bg-gradient-to-r from-purple-600 to-purple-700 text-white shrink-0">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold">Messages</h1>
           <button
@@ -180,74 +177,29 @@ const [currentUserData, setCurrentUserData] = useState(null);
         </div>
       </div>
 
-      {/* New Matches Section (Preserved from First Code UI) */}
-      {newMatches.length > 0 && (
-        <div className="p-6 border-b border-purple-200 bg-white">
-          <h2 className="text-lg font-bold text-purple-700 mb-4">
-            New Matches
-          </h2>
-          <div className="flex space-x-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {newMatches.map((match, idx) => {
-              const userStatus = statuses[match.id];
-              const isOnline = userStatus?.state === "online";
+      {/* 2. SCROLLABLE AREA: Combined New Matches & Chats inside one scrollable container */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide">
+        
+        {/* New Matches Section */}
+        {newMatches.length > 0 && (
+          <div className="p-6 border-b border-purple-200 bg-white">
+            <h2 className="text-lg font-bold text-purple-700 mb-4">
+              New Matches
+            </h2>
+            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+              {newMatches.map((match, idx) => {
+                const userStatus = statuses[match.id];
+                const isOnline = userStatus?.state === "online";
 
-              return (
-                <button
-                  key={match.id}
-                  onClick={() => setSelectedChat(match)}
-                  className="flex flex-col items-center w-20 flex-shrink-0 group animate-[slideIn_0.5s_ease-out]"
-                  style={{ animationDelay: `${idx * 0.05}s` }}
-                >
-                  <div className="relative w-16 h-16 mb-2">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-3xl border-3 border-purple-300 group-hover:scale-110 transition-transform overflow-hidden text-white">
-                      {match.avatarUrl.length > 2 ? (
-                        <img
-                          src={match.avatarUrl}
-                          alt={match.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        match.avatarUrl
-                      )}
-                    </div>
-                    <div
-                      className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-                        isOnline ? "bg-green-400" : null
-                      }`}
-                    ></div>
-                  </div>
-                  <span className="text-xs font-semibold text-gray-700 truncate w-full text-center">
-                    {match.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Messages List */}
-      <div className="p-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <h2 className="text-lg font-bold text-purple-700 mb-4">Your Chats</h2>
-        <div className="space-y-2">
-          {existingChats.length > 0 ? (
-            existingChats.map((match, idx) => {
-              const userStatus = statuses[match.id];
-              const isOnline = userStatus?.state === "online";
-              return (
-                <button
-                  key={match.id}
-                  onClick={() => setSelectedChat(match)}
-                  className={`w-full p-4 rounded-2xl text-left transition-all animate-[slideIn_0.5s_ease-out] ${
-                    selectedChatId === match.id
-                      ? "bg-gradient-to-r from-purple-400 to-purple-500 text-white shadow-lg"
-                      : "bg-white hover:bg-purple-50 text-gray-800"
-                  }`}
-                  style={{ animationDelay: `${idx * 0.05}s` }}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="relative w-12 h-12 flex-shrink-0">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-300 to-purple-500 flex items-center justify-center text-2xl text-white overflow-hidden">
+                return (
+                  <button
+                    key={match.id}
+                    onClick={() => setSelectedChat(match)}
+                    className="flex flex-col items-center w-20 flex-shrink-0 group animate-[slideIn_0.5s_ease-out]"
+                    style={{ animationDelay: `${idx * 0.05}s` }}
+                  >
+                    <div className="relative w-16 h-16 mb-2">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-3xl border-3 border-purple-300 group-hover:scale-110 transition-transform overflow-hidden text-white">
                         {match.avatarUrl.length > 2 ? (
                           <img
                             src={match.avatarUrl}
@@ -260,43 +212,92 @@ const [currentUserData, setCurrentUserData] = useState(null);
                       </div>
                       <div
                         className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-                          isOnline ? "bg-green-400" : "bg-gray-400"
+                          isOnline ? "bg-green-400" : "hidden"
                         }`}
                       ></div>
                     </div>
-                    <div className="flex-1 text-left overflow-hidden">
-                      <h3 className="font-bold truncate">{match.name}</h3>
-                      <p
-                        className={`text-sm truncate ${
+                    <span className="text-xs font-semibold text-gray-700 truncate w-full text-center">
+                      {match.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Your Chats List */}
+        <div className="p-6">
+          <h2 className="text-lg font-bold text-purple-700 mb-4">Your Chats</h2>
+          <div className="space-y-2">
+            {existingChats.length > 0 ? (
+              existingChats.map((match, idx) => {
+                const userStatus = statuses[match.id];
+                const isOnline = userStatus?.state === "online";
+                return (
+                  <button
+                    key={match.id}
+                    onClick={() => setSelectedChat(match)}
+                    className={`w-full p-4 rounded-2xl text-left transition-all animate-[slideIn_0.5s_ease-out] ${
+                      selectedChatId === match.id
+                        ? "bg-gradient-to-r from-purple-400 to-purple-500 text-white shadow-lg"
+                        : "bg-white hover:bg-purple-50 text-gray-800"
+                    }`}
+                    style={{ animationDelay: `${idx * 0.05}s` }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-12 h-12 flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-300 to-purple-500 flex items-center justify-center text-2xl text-white overflow-hidden">
+                          {match.avatarUrl.length > 2 ? (
+                            <img
+                              src={match.avatarUrl}
+                              alt={match.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            match.avatarUrl
+                          )}
+                        </div>
+                        <div
+                          className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
+                            isOnline ? "bg-green-400" : "bg-gray-400"
+                          }`}
+                        ></div>
+                      </div>
+                      <div className="flex-1 text-left overflow-hidden">
+                        <h3 className="font-bold truncate">{match.name}</h3>
+                        <p
+                          className={`text-sm truncate ${
+                            selectedChatId === match.id
+                              ? "text-white/80"
+                              : "text-gray-600"
+                          }`}
+                        >
+                          Tap to chat...
+                        </p>
+                      </div>
+                      <Heart
+                        className={`w-5 h-5 flex-shrink-0 ${
                           selectedChatId === match.id
-                            ? "text-white/80"
-                            : "text-gray-600"
+                            ? "text-white"
+                            : "text-purple-400"
                         }`}
-                      >
-                        Tap to chat...
-                      </p>
+                      />
                     </div>
-                    <Heart
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        selectedChatId === match.id
-                          ? "text-white"
-                          : "text-purple-400"
-                      }`}
-                    />
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            <p className="text-gray-500 text-center py-8">No users found.</p>
-          )}
+                  </button>
+                );
+              })
+            ) : (
+              <p className="text-gray-500 text-center py-8">No users found.</p>
+            )}
+          </div>
         </div>
       </div>
     </>
   );
 };
 
-// --- INDIVIDUAL CHAT COMPONENT ---
+// --- INDIVIDUAL CHAT COMPONENT (Unchanged mostly, kept for context) ---
 const IndividualChat = ({ chat, onBack, currentUserId }) => {
   const [messageText, setMessageText] = useState("");
   const [messages, setMessages] = useState([]);
@@ -326,7 +327,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
   }, [chat.id]);
 
   const isOnline = userStatus?.state === "online";
-  // Real-time Messages Listener
+
   useEffect(() => {
     if (!chatId) return;
     const messagesRef = collection(db, "chats", chatId, "messages");
@@ -402,7 +403,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-[#E6E6FA] to-purple-100 overflow-hidden md:bg-gradient-to-br md:from-[#E6E6FA] md:to-purple-100 relative">
-      {/* Error Toast */}
       {errorModal && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full shadow-lg z-50 animate-bounce">
           {errorModal}
@@ -415,7 +415,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         </div>
       )}
 
-      {/* Chat Header */}
       <div className="flex items-center gap-4 p-6 border-b border-purple-200 bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg flex-shrink-0 fixed md:relative top-16 md:top-auto left-0 right-0 z-40 md:z-auto">
         <button
           onClick={onBack}
@@ -440,7 +439,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
           </div>
           <div
             className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-              isOnline ? "bg-green-400" :"bg-gray-400"
+              isOnline ? "bg-green-400" : "bg-gray-400"
             }`}
           ></div>
         </button>
@@ -450,11 +449,9 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
             {isOnline ? "Active now" : "Offline"}
           </p>
         </div>
-       
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 mt-8 lg:mt-0 space-y-3 md:space-y-4 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-4 md:px-6 pt-24 pb-28 md:py-6">
+      <div className="flex-1 mt-8 lg:mt-0 space-y-3 md:space-y-4 overflow-y-auto scrollbar-hide px-4 md:px-6 pt-24 pb-28 md:py-6">
         {messages.length === 0 ? (
           <div className="text-center text-gray-600 mt-8 md:mt-20 animate-[fadeIn_0.5s_ease-out]">
             <div className="text-4xl md:text-5xl mb-2 md:mb-4">💜</div>
@@ -523,10 +520,8 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
       <div className="p-4 border-t border-purple-200 bg-white/80 backdrop-blur-sm flex-shrink-0 fixed md:static bottom-20 md:bottom-auto left-0 right-0 md:w-full z-50">
         <div className="flex items-center gap-3">
-          {/* Hidden Inputs for File/Image */}
           <label className="p-2 bg-purple-100 text-purple-600 rounded-full hover:bg-purple-200 transition-all cursor-pointer">
             <Image className="w-5 h-5" />
             <input
@@ -570,7 +565,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         </div>
       </div>
 
-      {/* User Profile Modal */}
       {showProfile && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-[fadeIn_0.3s_ease-out]">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-[slideIn_0.3s_ease-out]">
@@ -631,7 +625,7 @@ const ChatPlaceholder = () => (
 // --- MAIN PAGE ---
 export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState(null);
-  const { currentUser, loading } = useAuth(); // Auth Context
+  const { currentUser, loading } = useAuth();
   const currentUserId = currentUser?.uid;
 
   useEffect(() => {
@@ -655,7 +649,6 @@ export default function ChatPage() {
     });
 
     return () => {
-      // component unmount hone pe offline mark
       set(userStatusRef, {
         state: "offline",
         lastSeen: Date.now(),
@@ -681,12 +674,12 @@ export default function ChatPage() {
     <div className="h-screen md:h-[calc(100vh-64px)] flex flex-col bg-white overflow-hidden">
       <div className="flex-1 flex bg-white overflow-hidden min-h-0">
         {/* Left Column */}
+        {/* Changed overflow-y-auto to overflow-hidden so the parent container doesn't scroll */}
         <div
           className={`
                     w-full md:w-2/5 md:block 
-                    md:h-full overflow-y-auto bg-white flex flex-col
+                    md:h-full bg-white flex flex-col overflow-hidden
                     ${selectedChat ? "hidden" : "block"}
-                    [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]
                 `}
         >
           <ChatList

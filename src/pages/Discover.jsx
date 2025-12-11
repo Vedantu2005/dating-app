@@ -307,7 +307,8 @@ const Discover = () => {
     };
 
     return (
-        <div className="mx-auto max-w-xl h-[calc(105vh-14rem)] sm:h-[calc(100vh-7rem)] flex flex-col mt-0 lg:mt-8">
+        /* 👇 REDUCED WIDTH FROM max-w-xl TO max-w-sm */
+        <div className="mx-auto max-w-sm h-[calc(105vh-14rem)] sm:h-[calc(100vh-7rem)] flex flex-col mt-0 lg:mt-8">
             <div className="flex-1 relative min-h-0">
                 {/* <button onClick={() => triggerSwipe('left')} className="absolute left-[-5rem] cursor-pointer top-1/2 -translate-y-1/2 z-20 hidden sm:flex items-center justify-center w-16 h-16 bg-white/90 rounded-full shadow-xl text-red-500 hover:scale-105 transition-transform active:scale-95"><X size={32} /></button>
                 <button onClick={() => triggerSwipe('right')} className="absolute right-[-5rem] cursor-pointer top-1/2 -translate-y-1/2 z-20 hidden sm:flex items-center justify-center w-16 h-16 bg-white/90 rounded-full shadow-xl hover:scale-105 transition-transform active:scale-95" style={{ color: THEME_COLOR }}></button> */}

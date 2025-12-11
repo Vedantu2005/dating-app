@@ -17,16 +17,15 @@ import {
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore'; 
-
-// 👇 UPDATED IMPORTS: Fixed 'app' import and added Functions
+import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import app, { db as sharedDb, storage as sharedStorage } from '../firebaseConfig';
-import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // --- IMPORT EXTERNAL COMPONENT ---
 import EditProfile from '../components/EditProfile.jsx';
 
-// --- CONFIGURATION & UTILITIES (Kept exactly as original) ---
+// --- CONFIGURATION & UTILITIES ---
 const FALLBACK_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBEHnNpIfnVyqpcbA5ysFPa-ku87VdMYV0",
   authDomain: "bsss-dating.firebaseapp.com",
@@ -67,7 +66,7 @@ const loadRazorpayScript = (src) => {
   });
 };
 
-// --- UI COMPONENTS (Kept exactly as original) ---
+// --- UI COMPONENTS ---
 
 const DoubleDateIcon = () => (
   <div className="relative h-12 w-12">
@@ -96,10 +95,16 @@ const BrandLogo = ({ type, textColor = "text-black" }) => (
   </div>
 );
 
-const ProfileHeader = ({ userData, onNavigate, onSignOut }) => {
+// 👇 UPDATED ProfileHeader: Restored Ring, Removed Text, Fixed Persistence
+const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   const user = userData?.auth;
   const profile = userData?.profile || {};
+  
+  // State for loading spinner and immediate local preview
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState(null);
 
+  // --- Calculate Percentage (needed for the ring) ---
   const fields = [
     user?.displayName || profile.name, 
     user?.photoURL || profile.photos?.[0], 
@@ -116,11 +121,59 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut }) => {
   const displayName = user?.displayName || profile.name || "User";
   const age = profile.age || "";
   const displayAge = age ? `, ${age}` : "";
-  const photoURL = user?.photoURL || (profile.photos?.[0] || `https://placehold.co/100x100/fecaca/991b1b?text=${displayName?.[0] || 'U'}`);
+  
+  // 1. Determine the image source priority:
+  //    PRIORITY FIX: Check profile.photos FIRST, then user.photoURL
+  const uploadedPhoto = profile.photos && profile.photos.length > 0 ? profile.photos[0] : null;
+  const authPhoto = user?.photoURL;
+  const realPhoto = uploadedPhoto || authPhoto;
+  
+  const placeholder = `https://placehold.co/100x100/fecaca/991b1b?text=${displayName?.[0] || 'U'}`;
+  
+  const displayPhoto = preview || realPhoto || placeholder;
+  // We have an image if there is a preview OR a real photo exists (uploaded or auth)
+  const hasImage = !!(preview || realPhoto);
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.uid) return;
+
+    // 2. Set Immediate Preview
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl); 
+    setUploading(true);
+
+    try {
+      // 3. Upload to Storage
+      const storageRef = ref(sharedStorage, `users/${user.uid}/photos/${Date.now()}-${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+
+      // 4. Update Firestore
+      const currentPhotos = profile.photos || [];
+      // Add new photo to the START of the array
+      const newPhotos = [url, ...currentPhotos];
+
+      const profileRef = doc(db, getUserDocPath(user.uid));
+      await updateDoc(profileRef, { photos: newPhotos });
+
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, { photos: newPhotos });
+
+    } catch (error) {
+      console.error("Error uploading profile photo:", error);
+      alert("Failed to upload photo. Please try again.");
+      setPreview(null); // Revert preview on error
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
-    <div className=" flex items-center justify-between px-4 pt-6   sm:justify-start sm:gap-[20px]">
+    <div className=" flex items-center justify-between px-4 pt-6 sm:justify-start sm:gap-[20px]">
       <div className=" mr-8 relative w-24 h-24">
+        
+        {/* Progress Circle SVG (Restored, but NO TEXT) */}
         <svg className="w-full h-full" viewBox="0 0 100 100">
           <circle
             className="text-gray-200"
@@ -144,26 +197,56 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut }) => {
             cy="50"
             transform="rotate(-90 50 50)"
           />
-          <text
-            x="50"
-            y="50"
-            dominantBaseline="middle"
-            textAnchor="middle"
-            className="text-lg font-bold text-red-500 fill-current"
-          >
-            {percentage}%
-          </text>
+          {/* Removed <text> element here to hide percentage number */}
         </svg>
+
+        {/* Profile Image / Upload Area */}
         <div className="absolute inset-0 p-4">
-          <img
-            className="w-full h-full rounded-full object-cover"
-            src={photoURL}
-            alt="Profile"
-            onError={(e) => e.target.src = `https://placehold.co/96x96/fecaca/991b1b?text=${displayName?.[0] || 'U'}`}
-          />
+          <label 
+            className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden cursor-pointer relative group 
+            ${!hasImage ? 'bg-red-50 border-2 border-dashed border-red-200' : ''}`}
+          >
+            
+            <input 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={handlePhotoUpload}
+              disabled={uploading}
+            />
+
+            {/* Spinner Overlay */}
+            {uploading && (
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+                <Loader className="animate-spin text-white" size={24} />
+              </div>
+            )}
+
+            {hasImage ? (
+              // SHOW IMAGE (Preview or Real)
+              <>
+                <img
+                  className="w-full h-full rounded-full object-cover"
+                  src={displayPhoto}
+                  alt="Profile"
+                  onError={(e) => e.target.src = placeholder}
+                />
+                {/* Hover overlay to indicate you can change it */}
+                <div className="absolute inset-0 bg-black/30 hidden group-hover:flex items-center justify-center transition-all">
+                  <Pencil className="text-white opacity-90" size={20} />
+                </div>
+              </>
+            ) : (
+              // SHOW "V PLUS" (Placeholder)
+              <div className="flex flex-col items-center justify-center text-red-400 group-hover:text-red-600 transition-colors">
+                <Plus size={32} strokeWidth={3} />
+              </div>
+            )}
+          </label>
         </div>
       </div>
 
+      {/* Info Section */}
       <div className=" flex flex-col items-start -ml-6">
         <div className="flex items-center space-x-1">
           <h1 className="text-2xl font-bold truncate max-w-[150px]">{displayName}{displayAge}</h1>
@@ -472,7 +555,7 @@ const AuthorPopup = ({ onClose }) => (
 const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
   const [showAuthorPopup, setShowAuthorPopup] = useState(false);
 
-  // --- HANDLE PAYMENT UPGRADE (UPDATED FOR EMULATOR) ---
+  // --- HANDLE PAYMENT UPGRADE ---
   const handleUpgrade = async (plan) => {
     // 1. Define plan prices (in INR)
     const prices = {
@@ -486,10 +569,6 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
     // 2. Initialize Functions (Uses the imported 'app')
     const functions = getFunctions(app);
 
-    // 🚨 THIS LINE CONNECTS TO YOUR LOCAL EMULATOR 🚨
-    // When you deploy to live, you MUST remove or comment out this line.
-    //connectFunctionsEmulator(functions, "127.0.0.1", 5001);
-
     // 3. Load Razorpay SDK
     const res = await loadRazorpayScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) {
@@ -498,9 +577,9 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
     }
 
     try {
-        // 4. Call Cloud Function via SDK (Fixes CORS)
+        // 4. Call Cloud Function via SDK
         const createOrderFn = httpsCallable(functions, 'createOrder');
-        const response = await createOrderFn({ amount: amount * 100 }); // Pass amount in paise
+        const response = await createOrderFn({ amount: amount * 100 }); 
         const orderData = response.data;
 
         // 5. Razorpay Options
@@ -515,7 +594,6 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
                 // 6. Payment Success Handler
                 console.log("Payment Successful", response);
 
-                // Verify Payment on Backend (Optional but recommended)
                 try {
                   const verifyPaymentFn = httpsCallable(functions, 'verifyPayment');
                   await verifyPaymentFn({
@@ -527,7 +605,6 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
                   console.error("Verification warning:", verifyErr);
                 }
 
-                // Update User Subscription in Firestore
                 if (userData?.auth?.uid && db) {
                   try {
                     const userRef = doc(db, "users", userData.auth.uid);
@@ -564,7 +641,8 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
 
   return (
     <div className="flex flex-col pb-4">
-      <ProfileHeader userData={userData} onNavigate={onNavigate} onSignOut={onSignOut} />
+      {/* 👇 PASSING db TO ProfileHeader */}
+      <ProfileHeader userData={userData} onNavigate={onNavigate} onSignOut={onSignOut} db={db} />
 
       <DoubleDateBanner />
 
@@ -580,7 +658,7 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
   );
 };
 
-// --- MAIN APP COMPONENT (Kept exactly as original) ---
+// --- MAIN APP COMPONENT ---
 
 export default function Profile() {
   const [authInstance, setAuthInstance] = useState(null);
@@ -696,7 +774,6 @@ export default function Profile() {
 
     switch (currentView) {
       case 'profile':
-        // IMPORTANT: Pass dbInstance so ProfileScreen can update subscription
         return <ProfileScreen onNavigate={navigate} userData={userData} onSignOut={handleSignOut} db={dbInstance} />;
       case 'edit':
         return (
