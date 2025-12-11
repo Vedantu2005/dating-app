@@ -95,7 +95,7 @@ const BrandLogo = ({ type, textColor = "text-black" }) => (
   </div>
 );
 
-// 👇 UPDATED ProfileHeader: Restored Ring, Removed Text, Fixed Persistence
+// 👇 UPDATED ProfileHeader: Fixed Image Circular Layout
 const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   const user = userData?.auth;
   const profile = userData?.profile || {};
@@ -123,7 +123,6 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   const displayAge = age ? `, ${age}` : "";
   
   // 1. Determine the image source priority:
-  //    PRIORITY FIX: Check profile.photos FIRST, then user.photoURL
   const uploadedPhoto = profile.photos && profile.photos.length > 0 ? profile.photos[0] : null;
   const authPhoto = user?.photoURL;
   const realPhoto = uploadedPhoto || authPhoto;
@@ -131,7 +130,6 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   const placeholder = `https://placehold.co/100x100/fecaca/991b1b?text=${displayName?.[0] || 'U'}`;
   
   const displayPhoto = preview || realPhoto || placeholder;
-  // We have an image if there is a preview OR a real photo exists (uploaded or auth)
   const hasImage = !!(preview || realPhoto);
 
   const handlePhotoUpload = async (e) => {
@@ -151,7 +149,6 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
 
       // 4. Update Firestore
       const currentPhotos = profile.photos || [];
-      // Add new photo to the START of the array
       const newPhotos = [url, ...currentPhotos];
 
       const profileRef = doc(db, getUserDocPath(user.uid));
@@ -163,48 +160,47 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
     } catch (error) {
       console.error("Error uploading profile photo:", error);
       alert("Failed to upload photo. Please try again.");
-      setPreview(null); // Revert preview on error
+      setPreview(null); 
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className=" flex items-center justify-between px-4 pt-6 sm:justify-start sm:gap-[20px]">
-      <div className=" mr-8 relative w-24 h-24">
+    <div className="flex items-center justify-between px-4 pt-6 sm:justify-start sm:gap-[20px]">
+      <div className="mr-8 relative w-24 h-24 flex-shrink-0">
         
-        {/* Progress Circle SVG (Restored, but NO TEXT) */}
-        <svg className="w-full h-full" viewBox="0 0 100 100">
+        {/* Progress Circle SVG */}
+        <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 100 100">
           <circle
             className="text-gray-200"
-            strokeWidth="8"
+            strokeWidth="6"
             stroke="currentColor"
             fill="transparent"
-            r="42"
+            r="46"
             cx="50"
             cy="50"
           />
           <circle
             className="text-red-500 transition-all duration-1000 ease-out"
-            strokeWidth="8"
-            strokeDasharray="264"
-            strokeDashoffset={264 - (percentage / 100) * 264}
+            strokeWidth="6"
+            strokeDasharray="289"
+            strokeDashoffset={289 - (percentage / 100) * 289}
             strokeLinecap="round"
             stroke="currentColor"
             fill="transparent"
-            r="42"
+            r="46"
             cx="50"
             cy="50"
-            transform="rotate(-90 50 50)"
           />
-          {/* Removed <text> element here to hide percentage number */}
         </svg>
 
         {/* Profile Image / Upload Area */}
-        <div className="absolute inset-0 p-4">
+        {/* CHANGED: Changed p-4 to p-1.5 so image fills the ring properly */}
+        <div className="absolute inset-0 p-1.5 rounded-full">
           <label 
-            className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden cursor-pointer relative group 
-            ${!hasImage ? 'bg-red-50 border-2 border-dashed border-red-200' : ''}`}
+            className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden cursor-pointer relative group bg-white shadow-inner
+            ${!hasImage ? 'bg-red-50 border border-dashed border-red-200' : ''}`}
           >
             
             <input 
@@ -223,7 +219,6 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
             )}
 
             {hasImage ? (
-              // SHOW IMAGE (Preview or Real)
               <>
                 <img
                   className="w-full h-full rounded-full object-cover"
@@ -231,13 +226,11 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
                   alt="Profile"
                   onError={(e) => e.target.src = placeholder}
                 />
-                {/* Hover overlay to indicate you can change it */}
                 <div className="absolute inset-0 bg-black/30 hidden group-hover:flex items-center justify-center transition-all">
                   <Pencil className="text-white opacity-90" size={20} />
                 </div>
               </>
             ) : (
-              // SHOW "V PLUS" (Placeholder)
               <div className="flex flex-col items-center justify-center text-red-400 group-hover:text-red-600 transition-colors">
                 <Plus size={32} strokeWidth={3} />
               </div>
@@ -247,7 +240,7 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
       </div>
 
       {/* Info Section */}
-      <div className=" flex flex-col items-start -ml-6">
+      <div className="flex flex-col items-start -ml-6 z-10">
         <div className="flex items-center space-x-1">
           <h1 className="text-2xl font-bold truncate max-w-[150px]">{displayName}{displayAge}</h1>
           <CheckCircle2 size={20} className="text-blue-500 fill-white" />

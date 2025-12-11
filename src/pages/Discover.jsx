@@ -1,6 +1,6 @@
 import React, { useState, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { collection, onSnapshot, query, where ,doc,orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, orderBy } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 
 // --- SVG Icons ---
@@ -46,25 +46,19 @@ const THEME_COLOR1 = 'oklch(19.2% 0.016 264.4)';
 
 const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-    // --- FIX: Ensure images is always an array with valid URLs ---
-    // If images is empty or contains null, default to a placeholder.
     const safeImages = (images && images.length > 0) 
         ? images.filter(url => typeof url === 'string' && url.startsWith('http')) 
         : [];
-    
     const displayImages = safeImages.length > 0 ? safeImages : ['https://placehold.co/400x600?text=No+Photo'];
 
     const goToPrevious = (e) => {
         e.stopPropagation();
         setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : displayImages.length - 1));
     };
-
     const goToNext = (e) => {
         e.stopPropagation();
         setCurrentImageIndex((prev) => (prev < displayImages.length - 1 ? prev + 1 : 0));
     };
-
     const handleImageClick = (e) => {
         e.stopPropagation();
         if (window.innerWidth >= 640) return;
@@ -77,82 +71,38 @@ const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) =>
 
     return (
         <div className={`relative w-full cursor-pointer bg-gray-900 group ${className}`} onClick={handleImageClick}>
-            <img 
-                src={displayImages[currentImageIndex]} 
-                alt="Profile" 
-                className={`w-full h-full ${objectFit}`} 
-                onError={(e) => e.target.src = 'https://placehold.co/400x600?text=Image+Error'} 
-            />
-            
+            <img src={displayImages[currentImageIndex]} alt="Profile" className={`w-full h-full ${objectFit}`} onError={(e) => e.target.src = 'https://placehold.co/400x600?text=Image+Error'} />
             <div className="absolute top-3 left-0 right-0 flex gap-1.5 px-3">
                 {displayImages.map((_, index) => (
                     <div key={index} className="h-1 flex-1 rounded-full" style={{ backgroundColor: index === currentImageIndex ? '#fff' : 'rgba(255,255,255,0.35)' }} />
                 ))}
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/10 pointer-events-none" />
-            <button onClick={goToPrevious} className="absolute cursor-pointer top-1/2 left-2 -translate-y-1/2 bg-black/30 text-white rounded-full p-1.5 backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100 hidden sm:block hover:bg-black/50">
-                <ChevronLeft size={28} />
-            </button>
-            <button onClick={goToNext} className="absolute cursor-pointer top-1/2 right-2 -translate-y-1/2 bg-black/30 text-white rounded-full p-1.5 backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100 hidden sm:block hover:bg-black/50">
-                <ChevronRight size={28} />
-            </button>
+            <button onClick={goToPrevious} className="absolute cursor-pointer top-1/2 left-2 -translate-y-1/2 bg-black/30 text-white rounded-full p-1.5 backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100 hidden sm:block hover:bg-black/50"><ChevronLeft size={28} /></button>
+            <button onClick={goToNext} className="absolute cursor-pointer top-1/2 right-2 -translate-y-1/2 bg-black/30 text-white rounded-full p-1.5 backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100 hidden sm:block hover:bg-black/50"><ChevronRight size={28} /></button>
         </div>
     );
 };
 
 const FullProfileView = ({ profile, onCollapse }) => {
-    const basicsData = [
-        { key: 'height', emoji: '📏' },
-        { key: 'exercise', emoji: '💪' },
-        { key: 'education', emoji: '🎓' },
-        { key: 'smoking', emoji: '🚭' },
-        { key: 'drinking', emoji: '🍷' },
-        { key: 'zodiac', emoji: '♍' },
-    ];
-
+    const basicsData = [{ key: 'height', emoji: '📏' }, { key: 'exercise', emoji: '💪' }, { key: 'education', emoji: '🎓' }, { key: 'smoking', emoji: '🚭' }, { key: 'drinking', emoji: '🍷' }, { key: 'zodiac', emoji: '♍' }];
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-gray-50">
-            <button onClick={onCollapse} className="absolute cursor-pointer top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition-all hover:bg-black/50">
-                <ChevronDown size={28} />
-            </button>
+            <button onClick={onCollapse} className="absolute cursor-pointer top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition-all hover:bg-black/50"><ChevronDown size={28} /></button>
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
                 <ImageGallery images={profile.images} className="h-[60vh] sm:h-[70vh]" objectFit="object-contain" />
                 <div className="p-4 sm:p-6 bg-white mb-2 sm:mb-3">
-                    <div className="flex items-baseline gap-2.5 mb-1.5">
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{profile.name}</h1>
-                        <span className="text-2xl sm:text-3xl font-normal">{profile.age}</span>
-                    </div>
+                    <div className="flex items-baseline gap-2.5 mb-1.5"><h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{profile.name}</h1><span className="text-2xl sm:text-3xl font-normal">{profile.age}</span></div>
                     <div className="flex flex-col gap-2.5 text-base text-gray-800">
                         <div className="flex items-center gap-2"><Briefcase size={20} className="text-gray-600" /><span>{profile.job} at {profile.company}</span></div>
                         <div className="flex items-center gap-2"><GraduationCap size={20} className="text-gray-600" /><span>{profile.school}</span></div>
                         <div className="flex items-center gap-2"><MapPin size={20} className="text-gray-600" /><span>{profile.location}</span></div>
                     </div>
                 </div>
-                <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3">
-                    <p className="text-gray-900 text-base leading-relaxed">{profile.bio}</p>
-                </div>
-                {profile.prompts.map((prompt, index) => (
-                    <div key={index} className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3">
-                        <div className="text-sm font-bold uppercase tracking-wide mb-2.5" style={{ color: THEME_COLOR }}>{prompt.question}</div>
-                        <p className="text-gray-900 text-base leading-relaxed">{prompt.answer}</p>
-                    </div>
-                ))}
-                <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3">
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">My basics</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {basicsData.map((item) => profile[item.key] ? (
-                            <div key={item.key} className="flex items-center gap-3"><div className="text-2xl">{item.emoji}</div><div className="text-base text-gray-900">{profile[item.key]}</div></div>
-                        ) : null)}
-                    </div>
-                </div>
-                <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3">
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">My interests</h3>
-                    <div className="flex flex-wrap gap-2.5">
-                        {profile.interests.map((interest) => (
-                            <span key={interest} className="inline-flex items-center rounded-full px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-semibold" style={{ backgroundColor: '#FFF5E6', color: '#CC8800', border: '1.5px solid #FFE0B2' }}>{interest}</span>
-                        ))}
-                    </div>
-                </div>
+                <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><p className="text-gray-900 text-base leading-relaxed">{profile.bio}</p></div>
+                {profile.prompts.map((prompt, index) => (<div key={index} className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><div className="text-sm font-bold uppercase tracking-wide mb-2.5" style={{ color: THEME_COLOR }}>{prompt.question}</div><p className="text-gray-900 text-base leading-relaxed">{prompt.answer}</p></div>))}
+                <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><h3 className="text-xl font-bold text-gray-900 mb-4">My basics</h3><div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{basicsData.map((item) => profile[item.key] ? (<div key={item.key} className="flex items-center gap-3"><div className="text-2xl">{item.emoji}</div><div className="text-base text-gray-900">{profile[item.key]}</div></div>) : null)}</div></div>
+                <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><h3 className="text-xl font-bold text-gray-900 mb-4">My interests</h3><div className="flex flex-wrap gap-2.5">{profile.interests.map((interest) => (<span key={interest} className="inline-flex items-center rounded-full px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-semibold" style={{ backgroundColor: '#FFF5E6', color: '#CC8800', border: '1.5px solid #FFE0B2' }}>{interest}</span>))}</div></div>
             </div>
         </div>
     );
@@ -178,14 +128,7 @@ const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
 
     const handleStart = (clientX, clientY) => { if (!isTop) return; setIsDragging(true); setStartPos({ x: clientX, y: clientY }); };
     const handleMove = (clientX, clientY) => { if (!isDragging || !isTop) return; const x = clientX - startPos.x; const y = clientY - startPos.y; setDragOffset({ x, y }); };
-    const handleEnd = () => {
-        if (!isDragging || !isTop) return;
-        setIsDragging(false);
-        const threshold = 100;
-        if (Math.abs(dragOffset.x) > threshold) animateSwipe(dragOffset.x > 0 ? 'right' : 'left');
-        else if (dragOffset.y < -threshold) animateSwipe('up');
-        else setDragOffset({ x: 0, y: 0 });
-    };
+    const handleEnd = () => { if (!isDragging || !isTop) return; setIsDragging(false); const threshold = 100; if (Math.abs(dragOffset.x) > threshold) animateSwipe(dragOffset.x > 0 ? 'right' : 'left'); else if (dragOffset.y < -threshold) animateSwipe('up'); else setDragOffset({ x: 0, y: 0 }); };
 
     const rotation = isDragging ? (dragOffset.x / 20) : (dragOffset.x === 0 ? 0 : (dragOffset.x > 100 ? 15 : -15));
     const opacity = Math.min(Math.abs(dragOffset.x) / 100, 1);
@@ -197,9 +140,7 @@ const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
                 <div className="absolute top-16 left-8 z-10 -rotate-12 px-6 py-2" style={{ opacity: dragOffset.x > 0 ? opacity : 0 }}><button className="flex cursor-pointer h-16 w-16 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" style={{ backgroundColor: THEME_COLOR }}><Heart size={32} fill="white" /></button></div>
                 <div className="absolute top-16 right-8 z-10 rotate-12 rounded-lg px-6 py-2 text-red-500" style={{ opacity: dragOffset.x < 0 ? opacity : 0 }}><button className="flex cursor-pointer h-16 w-16 items-center justify-center rounded-full bg-red-500 shadow-lg text-white border-2 border-red-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><X size={32} strokeWidth={2.5} /></button></div>
                 <div className="absolute top-1/3 left-1/2 z-10 -translate-x-1/2 -rotate-6 rounded-lg px-6 py-2 text-blue-400" style={{ opacity: dragOffset.y < 0 ? opacityY : 0 }}><button className="flex cursor-pointer h-14 w-14 items-center justify-center rounded-full bg-blue-400 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><Star size={32} fill="white" /></button></div>
-
                 <ImageGallery images={profile.images} className="h-full" />
-
                 <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 pt-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent text-white">
                     <div className="flex items-baseline gap-2.5 mb-1.5"><h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{profile.name}</h1><span className="text-2xl sm:text-3xl font-normal">{profile.age}</span></div>
                     <div className="flex items-center gap-1.5 mb-2.5">{profile.badges.map((badge) => (<span key={badge} className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-md px-3 py-1 text-xs font-semibold">{badge === 'Vaccinated' && <Check size={14} />}{badge}</span>))}</div>
@@ -232,43 +173,36 @@ const Discover = () => {
     const [currentUserData, setCurrentUserData] = useState(null);
     const topCardRef = useRef();
     const currentUserId = auth.currentUser?.uid;
-    const preference=currentUserData?.gender==='male'?'female':'male'
+    const preference = currentUserData?.gender === 'male' ? 'female' : 'male';
 
-     useEffect(() => {
-    if (!currentUserId) return;
-
-    const userRef = doc(db, "users", currentUserId);
-
-    const unsub = onSnapshot(userRef, (snapshot) => {
-        setCurrentUserData(snapshot.data());
-    });
-
-    return () => unsub();
-}, [currentUserId]);
-
+    useEffect(() => {
+        if (!currentUserId) return;
+        const userRef = doc(db, "users", currentUserId);
+        const unsub = onSnapshot(userRef, (snapshot) => {
+            setCurrentUserData(snapshot.data());
+        });
+        return () => unsub();
+    }, [currentUserId]);
 
     useEffect(() => {
         if (!currentUserId || !preference) return;
-        const q = query(collection(db, 'users'),where('gender','==',preference),orderBy("displayName", "asc"));
+        const q = query(collection(db, 'users'), where('gender', '==', preference), orderBy("displayName", "asc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedProfiles = snapshot.docs
                 .filter(doc => doc.id !== currentUserId)
                 .map(doc => {
                     const data = doc.data();
-                    
-                    // --- CRITICAL FIX: Handle images safely ---
                     let validImages = [];
                     if (Array.isArray(data.photos) && data.photos.length > 0) {
                         validImages = data.photos.filter(url => typeof url === 'string' && url.startsWith('http'));
                     } else if (typeof data.avatarUrl === 'string' && data.avatarUrl.startsWith('http')) {
                         validImages = [data.avatarUrl];
                     }
-                    
                     return {
                         id: doc.id,
                         name: data.displayName || 'User',
                         age: data.age || 21,
-                        images: validImages, // This will be filtered in ImageGallery
+                        images: validImages,
                         job: data.jobTitle || 'Undisclosed',
                         company: data.company || '',
                         school: data.school || '',
@@ -288,7 +222,7 @@ const Discover = () => {
             setProfiles(fetchedProfiles);
         });
         return () => unsubscribe();
-    }, [currentUserId,preference]);
+    }, [currentUserId, preference]);
 
     const handleSwipe = (direction) => {
         console.log('Swiped:', direction);
@@ -307,12 +241,8 @@ const Discover = () => {
     };
 
     return (
-        /* 👇 REDUCED WIDTH FROM max-w-xl TO max-w-sm */
-        <div className="mx-auto max-w-sm h-[calc(105vh-14rem)] sm:h-[calc(100vh-7rem)] flex flex-col mt-0 lg:mt-8">
+        <div className="mx-auto max-w-sm h-[calc(105vh-14rem)] sm:h-[calc(100vh-7rem)] flex flex-col mt-0 lg:mt-8 relative">
             <div className="flex-1 relative min-h-0">
-                {/* <button onClick={() => triggerSwipe('left')} className="absolute left-[-5rem] cursor-pointer top-1/2 -translate-y-1/2 z-20 hidden sm:flex items-center justify-center w-16 h-16 bg-white/90 rounded-full shadow-xl text-red-500 hover:scale-105 transition-transform active:scale-95"><X size={32} /></button>
-                <button onClick={() => triggerSwipe('right')} className="absolute right-[-5rem] cursor-pointer top-1/2 -translate-y-1/2 z-20 hidden sm:flex items-center justify-center w-16 h-16 bg-white/90 rounded-full shadow-xl hover:scale-105 transition-transform active:scale-95" style={{ color: THEME_COLOR }}></button> */}
-
                 <div className="absolute inset-0 p-4 sm:p-6">
                     {profiles.length > 0 ? (
                         profiles.map((profile, index) => (
