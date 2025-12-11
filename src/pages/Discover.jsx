@@ -1,6 +1,16 @@
 import React, { useState, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { collection, onSnapshot, query, where, doc, orderBy } from 'firebase/firestore';
+import { 
+    collection, 
+    onSnapshot, 
+    query, 
+    where, 
+    doc, 
+    orderBy, 
+    getDoc, 
+    setDoc, 
+    serverTimestamp 
+} from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 
 // --- SVG Icons ---
@@ -85,7 +95,7 @@ const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) =>
 };
 
 const FullProfileView = ({ profile, onCollapse }) => {
-    const basicsData = [{ key: 'height', emoji: '📏' }, { key: 'exercise', emoji: '💪' }, { key: 'education', emoji: '🎓' }, { key: 'smoking', emoji: '🚭' }, { key: 'drinking', emoji: '🍷' }, { key: 'zodiac', emoji: '♍' }];
+    const basicsData = [{ key: 'height', emoji: '棟' }, { key: 'exercise', emoji: '潮' }, { key: 'education', emoji: '雌' }, { key: 'smoking', emoji: '坏' }, { key: 'drinking', emoji: '差' }, { key: 'zodiac', emoji: '笙' }];
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-gray-50">
             <button onClick={onCollapse} className="absolute cursor-pointer top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition-all hover:bg-black/50"><ChevronDown size={28} /></button>
@@ -186,7 +196,9 @@ const Discover = () => {
 
     useEffect(() => {
         if (!currentUserId || !preference) return;
+        // Fetch users who are NOT the current user and match preference
         const q = query(collection(db, 'users'), where('gender', '==', preference), orderBy("displayName", "asc"));
+        
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedProfiles = snapshot.docs
                 .filter(doc => doc.id !== currentUserId)
@@ -224,8 +236,50 @@ const Discover = () => {
         return () => unsubscribe();
     }, [currentUserId, preference]);
 
-    const handleSwipe = (direction) => {
-        console.log('Swiped:', direction);
+    // --- Updated Swipe Handler to Logic ---
+    const handleSwipe = async (direction) => {
+        if (!currentUserId || profiles.length === 0) return;
+
+        // The card being swiped is the last one in the 'profiles' array (Stack LIFO)
+        const swipedUser = profiles[profiles.length - 1];
+        const swipedUserId = swipedUser.id;
+
+        if (direction === 'right') {
+            console.log("Swiped Right on:", swipedUser.name);
+            try {
+                // 1. Record the Like in "swipes" subcollection
+                await setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
+                    liked: true,
+                    timestamp: serverTimestamp()
+                });
+
+                // 2. FORCE MATCH (DEMO MODE)
+                // In a real app, you would check if they swiped right on you first.
+                // For this demo, we create a match instantly so they appear in chat.
+                
+                const chatId = [currentUserId, swipedUserId].sort().join("_");
+                
+                await setDoc(doc(db, "matches", chatId), {
+                    users: [currentUserId, swipedUserId],
+                    usersIncluded: {
+                        [currentUserId]: true,
+                        [swipedUserId]: true
+                    },
+                    timestamp: serverTimestamp(),
+                    lastMessage: "You matched! Say hi 👋"
+                });
+
+                // ✅ REMOVED ALERT POPUP
+                console.log(`Matched with ${swipedUser.name}`); 
+                
+            } catch (error) {
+                console.error("Error processing swipe:", error);
+            }
+        } else {
+            console.log("Swiped Left/Up");
+        }
+
+        // Remove card from local state
         setTimeout(() => {
             setProfiles((prev) => prev.slice(0, -1));
         }, 300);

@@ -25,6 +25,8 @@ import {
   serverTimestamp,
   where,
   doc,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 import {
   ref as storageRef,
@@ -66,69 +68,76 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statuses, setStatuses] = useState({});
-  const [currentUserData, setCurrentUserData] = useState(null);
-
-  const preference = currentUserData?.gender === 'male' ? 'female' : "male";
 
   useEffect(() => {
-    if (!currentUserId) return;
-    const userRef = doc(db, "users", currentUserId);
-    const unsub = onSnapshot(userRef, (snap) => {
-      setCurrentUserData(snap.data());
-    });
-    return () => unsub();
-  }, [currentUserId]);
-
-  useEffect(() => {
-    if (!currentUserId || !preference) {
-      setIsLoading(false);
-      return;
-    }
-
+    // Realtime Presence
     const statusRef = rtdbRef(realtimeDB, "status");
     const unsubStatus = onValue(statusRef, (snap) => {
       setStatuses(snap.val() || {});
     });
+    return () => unsubStatus();
+  }, []);
 
-    const usersRef = collection(db, "users");
-    const usersQuery = query(usersRef, where('gender', '==', preference), orderBy("displayName", "asc"));
+  // --- CHANGED: FETCH MATCHES INSTEAD OF ALL USERS ---
+  useEffect(() => {
+    if (!currentUserId) {
+      setIsLoading(false);
+      return;
+    }
 
-    const unsubscribe = onSnapshot(
-      usersQuery,
-      (snapshot) => {
-        const fetchedUsers = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((user) => user.id !== currentUserId)
-          .filter(
-            (user) =>
-              user.displayName &&
-              user.displayName.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-
-        setUsers(
-          fetchedUsers.map((user) => ({
-            id: user.uid || user.id,
-            name: user.displayName || "User",
-            avatarUrl: user.avatarUrl || user.displayName?.charAt(0) || "?",
-            chatId: getChatId(currentUserId, user.uid || user.id),
-            bio: user.bio,
-            location: user.location,
-          }))
-        );
-
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching users:", error);
-        setIsLoading(false);
-      }
+    // Query matches where the current user is included
+    const matchesQuery = query(
+      collection(db, "matches"),
+      where(`usersIncluded.${currentUserId}`, "==", true)
     );
 
-    return () => {
-      unsubscribe();
-      unsubStatus();
-    };
-  }, [currentUserId, searchTerm, preference]);
+    const unsubscribe = onSnapshot(matchesQuery, async (snapshot) => {
+        const matchesData = [];
+
+        // Iterate through all match documents
+        for (const docSnap of snapshot.docs) {
+            const data = docSnap.data();
+            // Find the ID of the other person in the match
+            const otherUserId = data.users.find(uid => uid !== currentUserId);
+            
+            if (otherUserId) {
+                // Fetch details for that user
+                try {
+                    const userSnap = await getDoc(doc(db, "users", otherUserId));
+                    if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        
+                        // Filter by search term locally
+                        if (
+                            !searchTerm || 
+                            (userData.displayName && userData.displayName.toLowerCase().includes(searchTerm.toLowerCase()))
+                        ) {
+                            matchesData.push({
+                                id: otherUserId,
+                                chatId: docSnap.id, // The ID of the match document
+                                name: userData.displayName || "User",
+                                avatarUrl: (userData.photos && userData.photos[0]) || userData.avatarUrl || "https://placehold.co/100",
+                                bio: userData.aboutMe || "",
+                                location: userData.city || "Unknown",
+                                lastMessage: data.lastMessage || "Start chatting..."
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error fetching match profile", err);
+                }
+            }
+        }
+
+        setUsers(matchesData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching matches:", error);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentUserId, searchTerm]);
 
   const handleLogout = async () => {
     try {
@@ -146,14 +155,11 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
     );
   }
 
-  const newMatches = users.slice(0, 5);
-  const existingChats = users;
-
   return (
     <>
       <style>{customStyles}</style>
       
-      {/* 1. FIXED HEADER: This stays stuck at the top */}
+      {/* 1. FIXED HEADER */}
       <div className="p-6 border-b border-purple-200 bg-gradient-to-r from-purple-600 to-purple-700 text-white shrink-0">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold">Messages</h1>
@@ -177,61 +183,13 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
         </div>
       </div>
 
-      {/* 2. SCROLLABLE AREA: Combined New Matches & Chats inside one scrollable container */}
+      {/* 2. SCROLLABLE AREA */}
       <div className="flex-1 overflow-y-auto scrollbar-hide">
-        
-        {/* New Matches Section */}
-        {newMatches.length > 0 && (
-          <div className="p-6 border-b border-purple-200 bg-white">
-            <h2 className="text-lg font-bold text-purple-700 mb-4">
-              New Matches
-            </h2>
-            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-              {newMatches.map((match, idx) => {
-                const userStatus = statuses[match.id];
-                const isOnline = userStatus?.state === "online";
-
-                return (
-                  <button
-                    key={match.id}
-                    onClick={() => setSelectedChat(match)}
-                    className="flex flex-col items-center w-20 flex-shrink-0 group animate-[slideIn_0.5s_ease-out]"
-                    style={{ animationDelay: `${idx * 0.05}s` }}
-                  >
-                    <div className="relative w-16 h-16 mb-2">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-3xl border-3 border-purple-300 group-hover:scale-110 transition-transform overflow-hidden text-white">
-                        {match.avatarUrl.length > 2 ? (
-                          <img
-                            src={match.avatarUrl}
-                            alt={match.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          match.avatarUrl
-                        )}
-                      </div>
-                      <div
-                        className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-                          isOnline ? "bg-green-400" : "hidden"
-                        }`}
-                      ></div>
-                    </div>
-                    <span className="text-xs font-semibold text-gray-700 truncate w-full text-center">
-                      {match.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Your Chats List */}
         <div className="p-6">
-          <h2 className="text-lg font-bold text-purple-700 mb-4">Your Chats</h2>
+          <h2 className="text-lg font-bold text-purple-700 mb-4">Your Matches</h2>
           <div className="space-y-2">
-            {existingChats.length > 0 ? (
-              existingChats.map((match, idx) => {
+            {users.length > 0 ? (
+              users.map((match, idx) => {
                 const userStatus = statuses[match.id];
                 const isOnline = userStatus?.state === "online";
                 return (
@@ -273,7 +231,7 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
                               : "text-gray-600"
                           }`}
                         >
-                          Tap to chat...
+                          {match.lastMessage || "Tap to chat..."}
                         </p>
                       </div>
                       <Heart
@@ -288,7 +246,11 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
                 );
               })
             ) : (
-              <p className="text-gray-500 text-center py-8">No users found.</p>
+              <div className="text-center py-10 opacity-70">
+                 <Heart className="w-12 h-12 mx-auto text-purple-300 mb-2" />
+                 <p className="text-gray-500">No matches yet.</p>
+                 <p className="text-sm text-purple-500 mt-2">Go swipe right on Discover!</p>
+              </div>
             )}
           </div>
         </div>
@@ -297,7 +259,7 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
   );
 };
 
-// --- INDIVIDUAL CHAT COMPONENT (Unchanged mostly, kept for context) ---
+// --- INDIVIDUAL CHAT COMPONENT ---
 const IndividualChat = ({ chat, onBack, currentUserId }) => {
   const [messageText, setMessageText] = useState("");
   const [messages, setMessages] = useState([]);
@@ -357,6 +319,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
     const text = messageText.trim();
     if (!text) return;
     try {
+      // 1. Add message
       const messagesRef = collection(db, "chats", chatId, "messages");
       await addDoc(messagesRef, {
         senderId: currentUserId,
@@ -365,6 +328,13 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         type: "text",
         createdAt: serverTimestamp(),
       });
+
+      // 2. Update Match "Last Message"
+      // We assume the match doc ID is the same as the chat ID (based on logic in Discover)
+      const matchRef = doc(db, "matches", chatId); 
+      // Safe update - if match doc exists (it should), update it
+      setDoc(matchRef, { lastMessage: text, timestamp: serverTimestamp() }, { merge: true });
+
       setMessageText("");
     } catch (error) {
       console.error("Send error:", error);

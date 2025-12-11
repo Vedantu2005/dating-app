@@ -11,7 +11,7 @@ import {
   Zap,
   Flame,
   X,
-  User,
+  User, // We use User instead of UserSquare
   LogOut,
   Loader,
   Briefcase,
@@ -36,15 +36,14 @@ import {
   Building,
   Mic,
   ListMusic,
-  UserSquare,
   GraduationCap,
   ArrowLeft,
+  // UserSquare, // ❌ REMOVED: This causes the crash in new Lucide versions
 } from "lucide-react";
 import { doc, setDoc } from "firebase/firestore";
 import {
   ref,
   uploadBytes,
-  getStorage,
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
@@ -619,9 +618,8 @@ export default function EditProfile({
   const profile = userData?.profile || {};
   const MAX_PHOTOS = 6;
   const [activeTab, setActiveTab] = useState("edit");
-  //  const storage=getStorage();
+  
   // --- State Initialization ---
-  // Ensure photos is always an array, never undefined or null
   const [photos, setPhotos] = useState(
     Array.isArray(profile.photos) ? profile.photos : []
   );
@@ -1039,13 +1037,13 @@ export default function EditProfile({
           onSelect={setPronouns}
         />
         <SelectModal 
-  isOpen={activeModal === 'gender'} 
-  onClose={() => setActiveModal(null)} 
-  title="Gender" 
-  options={genderOptions} 
-  selectedValue={gender} 
-  onSelect={setGender} 
-/>
+          isOpen={activeModal === 'gender'} 
+          onClose={() => setActiveModal(null)} 
+          title="Gender" 
+          options={genderOptions} 
+          selectedValue={gender} 
+          onSelect={setGender} 
+        />
 
         <SelectModal
           isOpen={activeModal === "height"}
@@ -1431,11 +1429,11 @@ export default function EditProfile({
                 onClick={() => setActiveModal("pronouns")}
               />
               <ListItem 
-  icon={User} 
-  title="Gender" 
-  value={gender || "Select"} 
-  onClick={() => setActiveModal('gender')} 
-/>
+                icon={User} 
+                title="Gender" 
+                value={gender || "Select"} 
+                onClick={() => setActiveModal('gender')} 
+              />
 
               <ListItem
                 icon={Ruler}
@@ -1475,8 +1473,9 @@ export default function EditProfile({
             </ProfileSection>
 
             <ProfileSection title="Personality">
+              {/* REPLACED UserSquare with User here */}
               <ListItem
-                icon={UserSquare}
+                icon={User} 
                 title="Personality Type"
                 value={personalityType}
                 onClick={() => setActiveModal("personalityType")}
