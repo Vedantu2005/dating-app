@@ -184,13 +184,13 @@ export default function AuthPage() {
                         {/* Left Side - Form */}
                         <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
 
-                            {/* Logo & Brand */}
                             <div className="text-center mb-8 animate-[slide-in_0.6s_ease-out]">
-                                <h1 className="text-4xl font-extrabold md:text-5xl bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent mb-2">
-                                    BSSS Dating
-                                </h1>
-                                <p className="text-gray-600 text-sm mt-2">Find Your Perfect Connection Today</p>
-                            </div>
+    {/* CHANGED: Added font-['Dancing_Script'] and kept padding to prevent clipping */}
+    <h1 className="text-4xl md:text-5xl font-['Dancing_Script'] font-black bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent mb-2 pb-1 pr-2">
+        BSSS Dating
+    </h1>
+    <p className="text-gray-600 text-sm mt-2">Find Your Perfect Connection Today</p>
+</div>
 
                             {/* Mobile Toggle */}
                             <div className="md:hidden flex gap-2 mb-6">
@@ -224,7 +224,7 @@ export default function AuthPage() {
                                     {/* Login Form Content */}
                                     {isLoginView && (
                                         <div className="animate-[slide-in_0.5s_ease-out]">
-                                            <h2 className="text-3xl font-bold text-gray-800 mb-2">Welcome Back!</h2>
+                                            <h2 className="text-3xl font-bold text-gray-800 mb-2">Welcome !</h2>
                                             <p className="text-gray-600 mb-6">Login to start meeting amazing people</p>
 
                                             <div className="space-y-4">

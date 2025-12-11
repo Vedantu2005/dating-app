@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+// src/pages/Profile.jsx
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   CheckCircle2,
   Pencil,
@@ -13,18 +14,22 @@ import {
   X,
   LogOut,
   Loader,
-  User
+  User,
+  GraduationCap, 
+  Palette, 
+  Code2
 } from 'lucide-react';
+
+// Firebase Imports
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import app, { db as sharedDb, storage as sharedStorage } from '../firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-// --- IMPORT EXTERNAL COMPONENT ---
+// Internal Imports
+import app, { db as sharedDb, storage as sharedStorage } from '../firebaseConfig';
 import EditProfile from '../components/EditProfile.jsx';
-
 // --- CONFIGURATION & UTILITIES ---
 const FALLBACK_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBEHnNpIfnVyqpcbA5ysFPa-ku87VdMYV0",
@@ -91,7 +96,7 @@ const BrandLogo = ({ type, textColor = "text-black" }) => (
   </div>
 );
 
-// 👇 UPDATED ProfileHeader: Fixed Image Circular Layout
+// 👇 UPDATED ProfileHeader: Logout button moved to far right
 const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   const user = userData?.auth;
   const profile = userData?.profile || {};
@@ -100,7 +105,7 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(null);
 
-  // --- Calculate Percentage (needed for the ring) ---
+  // --- Calculate Percentage ---
   const fields = [
     user?.displayName || profile.name, 
     user?.photoURL || profile.photos?.[0], 
@@ -118,13 +123,11 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   const age = profile.age || "";
   const displayAge = age ? `, ${age}` : "";
   
-  // 1. Determine the image source priority:
+  // Image logic
   const uploadedPhoto = profile.photos && profile.photos.length > 0 ? profile.photos[0] : null;
   const authPhoto = user?.photoURL;
   const realPhoto = uploadedPhoto || authPhoto;
-  
   const placeholder = `https://placehold.co/100x100/fecaca/991b1b?text=${displayName?.[0] || 'U'}`;
-  
   const displayPhoto = preview || realPhoto || placeholder;
   const hasImage = !!(preview || realPhoto);
 
@@ -132,22 +135,17 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
     const file = e.target.files?.[0];
     if (!file || !user?.uid) return;
 
-    // 2. Set Immediate Preview
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl); 
     setUploading(true);
 
     try {
-      // 3. Upload to Storage
       const storageRef = ref(sharedStorage, `users/${user.uid}/photos/${Date.now()}-${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
 
-      // 4. Update Firestore
-      const currentPhotos = profile.photos || [];
-      const newPhotos = [url, ...currentPhotos];
-
-      const profileRef = doc(db, getUserDocPath(user.uid));
+      const newPhotos = [url, ...(profile.photos || [])];
+      const profileRef = doc(db, `artifacts/${appId}/users/${user.uid}/profile/data`); // Ensure path is correct from props/context
       await updateDoc(profileRef, { photos: newPhotos });
 
       const userRef = doc(db, "users", user.uid);
@@ -155,7 +153,7 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
 
     } catch (error) {
       console.error("Error uploading profile photo:", error);
-      alert("Failed to upload photo. Please try again.");
+      alert("Failed to upload photo.");
       setPreview(null); 
     } finally {
       setUploading(false);
@@ -163,20 +161,14 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   };
 
   return (
-    <div className="flex items-center justify-between px-4 pt-6 sm:justify-start sm:gap-[20px]">
-      <div className="mr-8 relative w-24 h-24 flex-shrink-0">
-        
+    // CHANGED: Removed justify-between, added w-full
+    <div className="flex items-center w-full px-4 pt-6">
+      
+      {/* 1. Avatar Section */}
+      <div className="mr-4 relative w-24 h-24 flex-shrink-0">
         {/* Progress Circle SVG */}
         <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 100 100">
-          <circle
-            className="text-gray-200"
-            strokeWidth="6"
-            stroke="currentColor"
-            fill="transparent"
-            r="46"
-            cx="50"
-            cy="50"
-          />
+          <circle className="text-gray-200" strokeWidth="6" stroke="currentColor" fill="transparent" r="46" cx="50" cy="50" />
           <circle
             className="text-red-500 transition-all duration-1000 ease-out"
             strokeWidth="6"
@@ -191,54 +183,29 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
           />
         </svg>
 
-        {/* Profile Image / Upload Area */}
-        {/* CHANGED: Changed p-4 to p-1.5 so image fills the ring properly */}
+        {/* Profile Image Input */}
         <div className="absolute inset-0 p-1.5 rounded-full">
-          <label 
-            className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden cursor-pointer relative group bg-white shadow-inner
-            ${!hasImage ? 'bg-red-50 border border-dashed border-red-200' : ''}`}
-          >
-            
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={handlePhotoUpload}
-              disabled={uploading}
-            />
-
-            {/* Spinner Overlay */}
+          <label className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden cursor-pointer relative group bg-white shadow-inner ${!hasImage ? 'bg-red-50 border border-dashed border-red-200' : ''}`}>
+            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
             {uploading && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
                 <Loader className="animate-spin text-white" size={24} />
               </div>
             )}
-
             {hasImage ? (
-              <>
-                <img
-                  className="w-full h-full rounded-full object-cover"
-                  src={displayPhoto}
-                  alt="Profile"
-                  onError={(e) => e.target.src = placeholder}
-                />
-                <div className="absolute inset-0 bg-black/30 hidden group-hover:flex items-center justify-center transition-all">
-                  <Pencil className="text-white opacity-90" size={20} />
-                </div>
-              </>
+              <img className="w-full h-full rounded-full object-cover" src={displayPhoto} alt="Profile" onError={(e) => e.target.src = placeholder} />
             ) : (
-              <div className="flex flex-col items-center justify-center text-red-400 group-hover:text-red-600 transition-colors">
-                <Plus size={32} strokeWidth={3} />
-              </div>
+              <Plus size={32} className="text-red-400" />
             )}
           </label>
         </div>
       </div>
 
-      {/* Info Section */}
-      <div className="flex flex-col items-start -ml-6 z-10">
+      {/* 2. Info Section */}
+      {/* CHANGED: Removed negative margins (-ml-6) that might overlap layout */}
+      <div className="flex flex-col items-start z-10">
         <div className="flex items-center space-x-1">
-          <h1 className="text-2xl font-bold truncate max-w-[150px]">{displayName}{displayAge}</h1>
+          <h1 className="text-2xl font-bold truncate max-w-[140px]">{displayName}{displayAge}</h1>
           <CheckCircle2 size={20} className="text-blue-500 fill-white" />
         </div>
         <button
@@ -250,11 +217,14 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
         </button>
       </div>
       
-      <div className="w-24 flex justify-end">
-         <button onClick={onSignOut} className="text-gray-400 hover:text-red-500 transition-colors p-2" title="Sign Out">
-            <LogOut size={20} />
-         </button>
+      {/* 3. Logout Section */}
+      {/* CHANGED: Used 'ml-auto' to push this element to the far right edge */}
+      <div className="ml-auto">
+          <button onClick={onSignOut} className="text-gray-400 hover:text-red-500 transition-colors p-2" title="Sign Out">
+            <LogOut size={24} /> {/* Increased size slightly for better visibility */}
+          </button>
       </div>
+
     </div>
   );
 };
@@ -463,7 +433,7 @@ const AuthorSection = ({ onOpenPopup }) => (
         </div>
         <div className="text-left">
           <p className="text-xs text-gray-500 font-medium">Created by</p>
-          <p className="text-sm font-bold text-gray-800">Honey Raghuwanshi</p>
+          <p className="text-sm font-bold text-gray-800">Anonymous</p>
         </div>
       </div>
       <ChevronRight size={18} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
@@ -494,24 +464,27 @@ const AuthorPopup = ({ onClose }) => (
 
       <div className="p-6">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Honey Raghuwanshi</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Anonymous</h2>
           <p className="text-sm text-gray-500 mt-1">Developer</p>
         </div>
 
-        <div className="space-y-4">
+       <div className="space-y-4">
+          
+          {/* 1. Professional Section -> Graduation Cap Icon */}
           <div className="flex items-start space-x-3 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-              <span className="text-xl">屏</span>
+              <GraduationCap className="text-white w-6 h-6" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">Professional</p>
-              <p className="text-xs text-gray-600 mt-1">Currently studying in BSSS College 3rd year in BA Economics</p>
+              <p className="text-xs text-gray-600 mt-1">Currently studying in BSSS College 3rd year in 6th Semester</p>
             </div>
           </div>
 
+          {/* 2. Design Philosophy -> Palette Icon */}
           <div className="flex items-start space-x-3 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-              <span className="text-xl">耳</span>
+              <Palette className="text-white w-6 h-6" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">Design Philosophy</p>
@@ -519,15 +492,17 @@ const AuthorPopup = ({ onClose }) => (
             </div>
           </div>
 
+          {/* 3. Expertise -> Code Icon */}
           <div className="flex items-start space-x-3 bg-gradient-to-r from-pink-50 to-red-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-              <span className="text-xl">噫</span>
+              <Code2 className="text-white w-6 h-6" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">Expertise</p>
               <p className="text-xs text-gray-600 mt-1">React, TypeScript, Tailwind CSS, and modern UI/UX patterns.</p>
             </div>
           </div>
+          
         </div>
 
         <button

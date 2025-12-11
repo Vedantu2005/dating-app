@@ -78,7 +78,7 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
     return () => unsubStatus();
   }, []);
 
-  // --- CHANGED: FETCH MATCHES INSTEAD OF ALL USERS ---
+  // --- FETCH MATCHES ---
   useEffect(() => {
     if (!currentUserId) {
       setIsLoading(false);
@@ -139,14 +139,6 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
     return () => unsubscribe();
   }, [currentUserId, searchTerm]);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="p-6 text-center text-purple-600">
@@ -161,15 +153,8 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
       
       {/* 1. FIXED HEADER */}
       <div className="p-6 border-b border-purple-200 bg-gradient-to-r from-purple-600 to-purple-700 text-white shrink-0">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center mb-4">
           <h1 className="text-3xl font-bold">Messages</h1>
-          <button
-            onClick={handleLogout}
-            className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-all"
-            title="Logout"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-3 w-5 h-5 text-gray-300" />
@@ -184,8 +169,10 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
       </div>
 
       {/* 2. SCROLLABLE AREA */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide">
-        <div className="p-6">
+      {/* FIXED: added 'overscroll-contain' and increased 'pb' significantly */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0 overscroll-contain">
+        {/* FIXED: Increased padding to pb-40 to ensure last item is visible above any nav bars */}
+        <div className="p-6 pb-40">
           <h2 className="text-lg font-bold text-purple-700 mb-4">Your Matches</h2>
           <div className="space-y-2">
             {users.length > 0 ? (
@@ -641,7 +628,9 @@ export default function ChatPage() {
     );
 
   return (
-    <div className="h-screen md:h-[calc(100vh-64px)] flex flex-col bg-white overflow-hidden">
+    // FIXED: Changed h-screen to h-[100dvh] to fix mobile browser scrollbar issue
+    // We subtract 70px to account for the top navigation bar on mobile
+<div className="h-[calc(100dvh-70px)] md:h-[calc(100vh-64px)] flex flex-col bg-white overflow-hidden">
       <div className="flex-1 flex bg-white overflow-hidden min-h-0">
         {/* Left Column */}
         {/* Changed overflow-y-auto to overflow-hidden so the parent container doesn't scroll */}

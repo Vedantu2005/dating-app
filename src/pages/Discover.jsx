@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 
-// --- SVG Icons ---
+// --- SVG Icons (Locally Defined) ---
 const X = ({ size = 24, strokeWidth = 2, className = '' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18M6 6l12 12" /></svg>
 );
@@ -162,15 +162,46 @@ const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
     );
 });
 
+// --- UPDATED ActionButtons: Fixed Circular Shapes ---
 const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike }) => {
     return (
         <div className="w-full pt-6 pb-4 sm:pb-8 px-4">
             <div className="flex items-center justify-center gap-4 md:gap-6">
-                <button onClick={onRewind} className="flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 shadow-lg text-white border-2 border-yellow-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><Undo2 size={32} /></button>
-                <button onClick={onNope} className="flex cursor-pointer h-16 w-16 items-center justify-center rounded-full bg-red-500 shadow-lg text-white border-2 border-red-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><X size={32} strokeWidth={2.5} /></button>
-                <button onClick={onSuperLike} className="flex cursor-pointer h-14 w-14 items-center justify-center rounded-full bg-blue-400 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><Star size={32} fill="white" /></button>
-                <button onClick={onLike} className="flex cursor-pointer h-16 w-16 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" style={{ backgroundColor: THEME_COLOR }}><Heart size={32} fill="white" /></button>
-                <button onClick={onLike} className="flex cursor-pointer h-14 w-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" style={{ backgroundColor: THEME_COLOR1 }}><MessageCircle size={32} fill="white" /></button>
+                {/* Added 'flex-shrink-0' and 'aspect-square' to prevent oval shapes.
+                   Used 'rounded-full' to ensure perfect circles.
+                */}
+                <button 
+                    onClick={onRewind} 
+                    className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 shadow-lg text-white border-2 border-yellow-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
+                >
+                    <Undo2 size={24} />
+                </button>
+                <button 
+                    onClick={onNope} 
+                    className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full bg-red-500 shadow-lg text-white border-2 border-red-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
+                >
+                    <X size={32} strokeWidth={2.5} />
+                </button>
+                <button 
+                    onClick={onSuperLike} 
+                    className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-blue-400 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
+                >
+                    <Star size={24} fill="white" />
+                </button>
+                <button 
+                    onClick={onLike} 
+                    className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" 
+                    style={{ backgroundColor: THEME_COLOR }}
+                >
+                    <Heart size={32} fill="white" />
+                </button>
+                <button 
+                    onClick={onLike} 
+                    className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" 
+                    style={{ backgroundColor: THEME_COLOR1 }}
+                >
+                    <MessageCircle size={24} fill="white" />
+                </button>
             </div>
         </div>
     );
@@ -178,6 +209,7 @@ const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike }) => {
 
 const Discover = () => {
     const [profiles, setProfiles] = useState([]);
+    const [history, setHistory] = useState([]); // --- NEW HISTORY STATE ---
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandedProfile, setExpandedProfile] = useState(null);
     const [currentUserData, setCurrentUserData] = useState(null);
@@ -236,29 +268,24 @@ const Discover = () => {
         return () => unsubscribe();
     }, [currentUserId, preference]);
 
-    // --- Updated Swipe Handler to Logic ---
+    // --- SWIPE HANDLER with HISTORY ---
     const handleSwipe = async (direction) => {
         if (!currentUserId || profiles.length === 0) return;
 
-        // The card being swiped is the last one in the 'profiles' array (Stack LIFO)
         const swipedUser = profiles[profiles.length - 1];
         const swipedUserId = swipedUser.id;
 
         if (direction === 'right') {
             console.log("Swiped Right on:", swipedUser.name);
             try {
-                // 1. Record the Like in "swipes" subcollection
+                // 1. Record the Like
                 await setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
                     liked: true,
                     timestamp: serverTimestamp()
                 });
 
                 // 2. FORCE MATCH (DEMO MODE)
-                // In a real app, you would check if they swiped right on you first.
-                // For this demo, we create a match instantly so they appear in chat.
-                
                 const chatId = [currentUserId, swipedUserId].sort().join("_");
-                
                 await setDoc(doc(db, "matches", chatId), {
                     users: [currentUserId, swipedUserId],
                     usersIncluded: {
@@ -268,21 +295,32 @@ const Discover = () => {
                     timestamp: serverTimestamp(),
                     lastMessage: "You matched! Say hi 👋"
                 });
-
-                // ✅ REMOVED ALERT POPUP
-                console.log(`Matched with ${swipedUser.name}`); 
-                
             } catch (error) {
                 console.error("Error processing swipe:", error);
             }
-        } else {
-            console.log("Swiped Left/Up");
         }
 
-        // Remove card from local state
+        // Remove card from view and ADD TO HISTORY
         setTimeout(() => {
-            setProfiles((prev) => prev.slice(0, -1));
+            setHistory((prev) => [...prev, swipedUser]); // Add to history stack
+            setProfiles((prev) => prev.slice(0, -1));    // Remove from active stack
         }, 300);
+    };
+
+    // --- NEW REWIND HANDLER ---
+    const handleRewind = () => {
+        if (history.length === 0) {
+            console.log("No history to rewind");
+            return;
+        }
+
+        const lastSwipedUser = history[history.length - 1];
+
+        // 1. Remove from history
+        setHistory((prev) => prev.slice(0, -1));
+
+        // 2. Add back to profiles (active stack)
+        setProfiles((prev) => [...prev, lastSwipedUser]);
     };
 
     const triggerSwipe = (direction) => {
@@ -319,7 +357,17 @@ const Discover = () => {
                     )}
                 </div>
             </div>
-            <div className="flex-shrink-0"><ActionButtons onLike={() => triggerSwipe('right')} onNope={() => triggerSwipe('left')} onSuperLike={() => triggerSwipe('up')} onRewind={() => console.log('Rewind')} /></div>
+            
+            {/* Action Buttons with Rewind */}
+            <div className="flex-shrink-0">
+                <ActionButtons 
+                    onLike={() => triggerSwipe('right')} 
+                    onNope={() => triggerSwipe('left')} 
+                    onSuperLike={() => triggerSwipe('up')} 
+                    onRewind={handleRewind} 
+                />
+            </div>
+            
             {isExpanded && <FullProfileView profile={expandedProfile} onCollapse={() => setIsExpanded(false)} />}
         </div>
     );

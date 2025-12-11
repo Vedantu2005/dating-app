@@ -127,9 +127,9 @@ export default function Navbar() {
             <nav className="md:hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-white via-white to-purple-50 border-b border-purple-200 shadow-md">
                 <div className="flex items-center justify-center h-16 px-4">
                     <Link to="/discover" className="flex items-center gap-2">
-                        <h1 className="text-[32px] font-['Dancing_Script'] font-black bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
-                            BSSS Dating
-                        </h1>
+                        <h1 className="text-[32px] font-['Dancing_Script'] font-black bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent pb-1 pr-1">
+    BSSS Dating
+</h1>
                     </Link>
                 </div>
             </nav>
