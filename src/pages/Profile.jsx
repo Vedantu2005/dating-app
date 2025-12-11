@@ -488,7 +488,7 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
 
     // 🚨 THIS LINE CONNECTS TO YOUR LOCAL EMULATOR 🚨
     // When you deploy to live, you MUST remove or comment out this line.
-    
+    connectFunctionsEmulator(functions, "127.0.0.1", 5001);
 
     // 3. Load Razorpay SDK
     const res = await loadRazorpayScript("https://checkout.razorpay.com/v1/checkout.js");
