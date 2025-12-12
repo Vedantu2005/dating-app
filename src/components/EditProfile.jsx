@@ -970,7 +970,7 @@ export default function EditProfile({
   const isReadyToSave = !isLoading;
 
   return (
-    <div className="bg-gray-50 min-h-screen font-inter">
+    <div className="bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto bg-white min-h-screen">
         <header className="border-b border-gray-200 sticky top-0 bg-white z-20">
           <div className="flex justify-between items-center px-6 py-4">

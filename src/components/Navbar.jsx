@@ -17,11 +17,9 @@ const customStyles = `
     }
 `;
 
-// FIXED: Removed currentView and onViewChange props.
 export default function Navbar() {
-    // Hooks for Auth and Routing
     const location = useLocation();
-    const { currentUser } = useAuth(); // Get current user info
+    const { currentUser } = useAuth(); 
 
     const navItems = [
         { 
@@ -70,23 +68,22 @@ export default function Navbar() {
         <>
             <style>{customStyles}</style>
 
-            {/* Desktop Navbar (Header) */}
+            {/* Desktop Navbar */}
             <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-white via-white to-purple-50 border-b border-purple-200 shadow-md" style={{ animation: 'slideDown 0.5s ease-out' }}>
                 <div className="max-w-7xl mx-auto px-6" >
                     <div className="flex items-center justify-between h-20">
-                        {/* Logo */}
+                        {/* Text Logo Restored */}
                         <Link to="/discover" className="flex items-center gap-3 cursor-pointer group">
                             <div>
-                                <h1 className="text-[32px] font-['Dancing_Script'] font-black bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
+                                <h1 className="text-[32px] font-['Satisfy'] font-normal bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
                                     BSSS Dating
                                 </h1>
                             </div>
                         </Link>
 
-                        {/* Navigation Items (Fixed to use Link) */}
+                        {/* Navigation Items */}
                         <div className="flex gap-2">
                             {navItems.map((item) => {
-                                // Check if the current pathname matches the item's destination
                                 const isActive = location.pathname === item.to;
                                 const Icon = item.icon;
 
@@ -107,10 +104,14 @@ export default function Navbar() {
                             })}
                         </div>
                         
-                        {/* User Info & Logout (Desktop) */}
+                        {/* User Info & Logout */}
                         <div className="flex items-center gap-3">
-                            {/* Display user name/email */}
-                            <span className="text-sm text-gray-600">{currentUser?.displayName || currentUser?.email}</span>
+                            {/* FIRST NAME ONLY FIX */}
+                            <span className="text-sm text-gray-600">
+                                {currentUser?.displayName 
+                                    ? currentUser.displayName.split(' ')[0] 
+                                    : currentUser?.email}
+                            </span>
                             <button 
                                 onClick={handleLogout}
                                 className="p-2 bg-purple-50 text-purple-600 rounded-full hover:bg-purple-100 transition-all"
@@ -123,18 +124,18 @@ export default function Navbar() {
                 </div>
             </nav>
 
-            {/* Mobile Top Bar (Just Logo) */}
+            {/* Mobile Top Bar */}
             <nav className="md:hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-white via-white to-purple-50 border-b border-purple-200 shadow-md">
                 <div className="flex items-center justify-center h-16 px-4">
                     <Link to="/discover" className="flex items-center gap-2">
-                        <h1 className="text-[32px] font-['Dancing_Script'] font-black bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent pb-1 pr-1">
-    BSSS Dating
-</h1>
+                        <h1 className="text-[32px] font-['Satisfy'] font-normal bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent pb-1 pr-1">
+                            BSSS Dating
+                        </h1>
                     </Link>
                 </div>
             </nav>
 
-            {/* Mobile Bottom Bar (Navigation - Fixed to use Link) */}
+            {/* Mobile Bottom Bar */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-purple-50 border-t border-purple-200 z-50">
                 <div className="grid grid-cols-4 gap-1 px-2 py-3">
                     {navItems.map((item) => {
@@ -152,19 +153,12 @@ export default function Navbar() {
                                 }`}
                             >
                                 <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-gray-700'}`} />
-                                <span
-                                    className={`text-xs font-bold ${
-                                        isActive ? 'text-white' : 'text-gray-700'
-                                    }`}
-                                >
-                                    {item.label}
-                                </span>
+                                <span className="text-xs font-bold">{item.label}</span>
                             </Link>
                         );
                     })}
                 </div>
             </nav>
-
         </>
     );
 }

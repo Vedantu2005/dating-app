@@ -1,8 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Satisfy&display=swap');
 @import "tailwindcss";
 
+:root {
+  font-family: 'Nunito', sans-serif;
+}
 
+body {
+  margin: 0;
+  font-family: 'Nunito', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-/* ulitity class  */
-.hello{
+/* Utility class if you need it later */
+.font-logo {
+  font-family: 'Satisfy', cursive;
+}
+
+.hello {
     border: 2px solid red;
 }
