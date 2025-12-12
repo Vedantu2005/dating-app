@@ -756,7 +756,7 @@ export default function Profile() {
   };
 
   return (
-    <div className=" flex justify-center min-h-screen p-4 bg-gray-300">
+    <div className=" flex justify-center min-h-screen p-4 bg-gray-300 font-inter">
       <div className=" w-full max-w-sm overflow-hidden bg-gray-100 rounded-2xl shadow-xl overflow-y-auto sm:max-w-[95%]">
         {renderView()}
       </div>
