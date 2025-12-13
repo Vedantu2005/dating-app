@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { MessageCircle, Trash2, Edit2, User } from "lucide-react";
-import { db, auth } from "../firebaseConfig"; // Importing your config
+import { db, auth } from "../firebaseConfig";
 import {
   collection,
   addDoc,
@@ -13,10 +13,11 @@ import {
   serverTimestamp,
   arrayUnion,
   arrayRemove,
+  increment // Make sure this is imported
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import CommentPopup from "../components/CommentPop";
-import { increment } from "firebase/firestore";
+
 const customStyles = `
   @keyframes slideIn {
     from { opacity: 0; transform: translateY(20px); }
@@ -32,8 +33,8 @@ const ConfessionPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [confessions, setConfessions] = useState([]);
   const [newConfession, setNewConfession] = useState("");
-  const [showCommentBox, setShowCommentBox] = useState({});
-  const [commentText, setCommentText] = useState("");
+  // const [showCommentBox, setShowCommentBox] = useState({}); // Unused in this version
+  // const [commentText, setCommentText] = useState(""); // Unused in this version
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
   const [activeCommentId, setActiveCommentId] = useState(null);
@@ -59,7 +60,6 @@ const ConfessionPage = () => {
         return {
           id: doc.id,
           ...data,
-          // Calculate local state based on arrays in DB
           likes: data.likedBy ? data.likedBy.length : 0,
           dislikes: data.dislikedBy ? data.dislikedBy.length : 0,
           liked:
@@ -98,7 +98,7 @@ const ConfessionPage = () => {
       await addDoc(collection(db, "confessions"), {
         content: newConfession,
         userId: currentUser.uid,
-        userName: currentUser.displayName || "Anonymous", // Uses real name
+        userName: currentUser.displayName || "Anonymous",
         createdAt: serverTimestamp(),
         likedBy: [],
         dislikedBy: [],
@@ -110,17 +110,15 @@ const ConfessionPage = () => {
     }
   };
 
-  // 5. Toggle Like in Firestore
+  // 5. Toggle Like
   const toggleLike = async (id, currentLiked, currentDisliked) => {
     if (!currentUser) return alert("Please log in to vote.");
     const docRef = doc(db, "confessions", id);
 
     try {
       if (currentLiked) {
-        // Remove like
         await updateDoc(docRef, { likedBy: arrayRemove(currentUser.uid) });
       } else {
-        // Add like and ensure dislike is removed
         await updateDoc(docRef, {
           likedBy: arrayUnion(currentUser.uid),
           dislikedBy: arrayRemove(currentUser.uid),
@@ -131,17 +129,15 @@ const ConfessionPage = () => {
     }
   };
 
-  // 6. Toggle Dislike in Firestore
+  // 6. Toggle Dislike
   const toggleDislike = async (id, currentDisliked, currentLiked) => {
     if (!currentUser) return alert("Please log in to vote.");
     const docRef = doc(db, "confessions", id);
 
     try {
       if (currentDisliked) {
-        // Remove dislike
         await updateDoc(docRef, { dislikedBy: arrayRemove(currentUser.uid) });
       } else {
-        // Add dislike and ensure like is removed
         await updateDoc(docRef, {
           dislikedBy: arrayUnion(currentUser.uid),
           likedBy: arrayRemove(currentUser.uid),
@@ -152,7 +148,7 @@ const ConfessionPage = () => {
     }
   };
 
-  // 7. Save Edit to Firestore
+  // 7. Save Edit
   const saveEdit = async (id) => {
     try {
       await updateDoc(doc(db, "confessions", id), {
@@ -165,7 +161,7 @@ const ConfessionPage = () => {
     }
   };
 
-  // 8. Delete from Firestore
+  // 8. Delete Confession
   const deleteConfession = async (id) => {
     if (window.confirm("Are you sure you want to delete this confession?")) {
       try {
@@ -176,41 +172,6 @@ const ConfessionPage = () => {
     }
   };
 
-  const handleCommentAdded = async (confessionId) => {
-    try {
-      await updateDoc(doc(db, "confessions", confessionId), {
-        commentCount: increment(1), // safer than manual +1
-      });
-    } catch (err) {
-      console.error("Error updating commentCount:", err);
-    }
-  };
-  // 9. Add Comment (Updates count in DB, keeps Alert UI as requested)
-  const addComment = async (id) => {
-    if (commentText.trim()) {
-      try {
-        // Update count in DB
-        const currentConfession = confessions.find((c) => c.id === id);
-        await updateDoc(doc(db, "confessions", id), {
-          commentCount: increment(1),
-        });
-
-        // Alert UI
-        alert("Comment added: " + commentText);
-        setCommentText("");
-        setShowCommentBox({ ...showCommentBox, [id]: false });
-      } catch (error) {
-        console.error("Error commenting:", error);
-      }
-    }
-  };
-  const handleClick = (confession) => {
-    // setShowCommentBox({ ...showCommentBox, [confession.id]: !showCommentBox[confession.id] })
-    setActiveCommentId(
-      activeCommentId === confession.id ? null : confession.id
-    );
-  };
-
   return (
     <>
       <style>{customStyles}</style>
@@ -219,7 +180,7 @@ const ConfessionPage = () => {
         {/* Header */}
         <div className="text-center mb-8 animate-[slideIn_0.6s_ease-out]">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent mb-2">
-            💜 Confessions
+            🤫 Confessions
           </h1>
           <p className="text-gray-600 text-base">
             Share your heart, find your people
@@ -232,11 +193,7 @@ const ConfessionPage = () => {
             <textarea
               value={newConfession}
               onChange={(e) => setNewConfession(e.target.value)}
-              placeholder={
-                currentUser
-                  ? `What's on your mind, ${currentUser.displayName}?`
-                  : "Please log in to share your confession..."
-              }
+              placeholder="What's on your mind?" // <--- UPDATED PLACEHOLDER
               disabled={!currentUser}
               className="w-full p-4 border-2 border-purple-300 rounded-2xl focus:border-purple-600 outline-none resize-none text-gray-700 text-sm placeholder-gray-400"
               rows="3"
@@ -262,7 +219,7 @@ const ConfessionPage = () => {
                 className="bg-white/98 backdrop-blur-sm rounded-3xl p-6 shadow-lg hover:shadow-2xl transition-all animate-[slideIn_0.5s_ease-out] flex flex-col group relative"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
-                {/* Author & Date Header (Added per request) */}
+                {/* Author & Date */}
                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
                   <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
                     <User size={16} />
@@ -277,7 +234,7 @@ const ConfessionPage = () => {
                   </div>
                 </div>
 
-                {/* Edit/Delete Buttons - Only for personal confessions on hover */}
+                {/* Edit/Delete Buttons */}
                 {currentUser && confession.userId === currentUser.uid && (
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -369,7 +326,6 @@ const ConfessionPage = () => {
                   </button>
 
                   <button
-                    // onClick={handleClick}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-purple-100 transition-all font-semibold text-sm"
                     onClick={() =>
                       setActiveCommentId(
@@ -383,6 +339,8 @@ const ConfessionPage = () => {
                     </span>
                   </button>
                 </div>
+
+                {/* Comment Popup */}
                 {activeCommentId === confession.id && (
                   <CommentPopup
                     confession={confession}
@@ -390,7 +348,6 @@ const ConfessionPage = () => {
                       setActiveCommentId(null);
                     }}
                     onCommentAdded={async () => {
-                      // ✅ IMMEDIATE UI UPDATE (LOCAL STATE)
                       setConfessions((prev) =>
                         prev.map((c) =>
                           c.id === confession.id
@@ -398,11 +355,10 @@ const ConfessionPage = () => {
                             : c
                         )
                       );
-
-                      // ✅ FIRESTORE UPDATE
                       try {
+                        // Using imported increment function directly
                         await updateDoc(doc(db, "confessions", confession.id), {
-                          commentCount: (confession.commentCount || 0) + 1,
+                          commentCount: increment(1),
                         });
                       } catch (error) {
                         console.error("Failed to update Firestore:", error);
@@ -410,28 +366,6 @@ const ConfessionPage = () => {
                     }}
                   />
                 )}
-
-                {/* Comment Box */}
-                {/* {showCommentBox[confession.id] && (
-                  <div className="mt-4 pt-3 border-t border-gray-200 animate-[fadeIn_0.3s_ease-out]">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Comment..."
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && addComment(confession.id)}
-                        className="flex-1 px-3 py-2 border-2 border-purple-200 rounded-lg focus:border-purple-500 outline-none text-sm"
-                      />
-                      <button
-                        onClick={() => addComment(confession.id)}
-                        className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
-                      >
-                        Post
-                      </button>
-                    </div>
-                  </div>
-                )} */}
               </div>
             ))}
           </div>

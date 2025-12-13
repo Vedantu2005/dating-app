@@ -1,4 +1,3 @@
-// src/pages/Profile.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   CheckCircle2,
@@ -17,7 +16,9 @@ import {
   User,
   GraduationCap, 
   Palette, 
-  Code2
+  Code2,
+  Share2, 
+  MessageCircle 
 } from 'lucide-react';
 
 // Firebase Imports
@@ -30,6 +31,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 // Internal Imports
 import app, { db as sharedDb, storage as sharedStorage } from '../firebaseConfig';
 import EditProfile from '../components/EditProfile.jsx';
+
 // --- CONFIGURATION & UTILITIES ---
 const FALLBACK_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBEHnNpIfnVyqpcbA5ysFPa-ku87VdMYV0",
@@ -74,7 +76,6 @@ const loadRazorpayScript = (src) => {
 // --- UI COMPONENTS ---
 
 const DoubleDateIcon = () => (
-  // "flex items-center justify-center" ensures the heart is exactly in the middle
   <div className="flex items-center justify-center w-12 h-12 bg-pink-100 rounded-full">
     <Heart
       size={24}
@@ -89,23 +90,20 @@ const BrandLogo = ({ type, textColor = "text-black" }) => (
     <span className={`text-3xl font-extrabold ${textColor}`}>BSSS</span>
     <span className={`text-[8px] font-bold px-2 py-0.5 rounded-sm uppercase ${type === 'gold' ? 'bg-yellow-500 text-black' :
         type === 'platinum' ? 'bg-gray-200 text-black' :
-          'bg-red-500 text-white' // plus
+          'bg-red-500 text-white' 
       }`}>
       {type}
     </span>
   </div>
 );
 
-// 👇 UPDATED ProfileHeader: Logout button moved to far right
 const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   const user = userData?.auth;
   const profile = userData?.profile || {};
   
-  // State for loading spinner and immediate local preview
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(null);
 
-  // --- Calculate Percentage ---
   const fields = [
     user?.displayName || profile.name, 
     user?.photoURL || profile.photos?.[0], 
@@ -123,7 +121,6 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   const age = profile.age || "";
   const displayAge = age ? `, ${age}` : "";
   
-  // Image logic
   const uploadedPhoto = profile.photos && profile.photos.length > 0 ? profile.photos[0] : null;
   const authPhoto = user?.photoURL;
   const realPhoto = uploadedPhoto || authPhoto;
@@ -145,7 +142,7 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
       const url = await getDownloadURL(storageRef);
 
       const newPhotos = [url, ...(profile.photos || [])];
-      const profileRef = doc(db, `artifacts/${appId}/users/${user.uid}/profile/data`); // Ensure path is correct from props/context
+      const profileRef = doc(db, `artifacts/${appId}/users/${user.uid}/profile/data`);
       await updateDoc(profileRef, { photos: newPhotos });
 
       const userRef = doc(db, "users", user.uid);
@@ -161,12 +158,8 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
   };
 
   return (
-    // CHANGED: Removed justify-between, added w-full
     <div className="flex items-center w-full px-4 pt-6">
-      
-      {/* 1. Avatar Section */}
       <div className="mr-4 relative w-24 h-24 flex-shrink-0">
-        {/* Progress Circle SVG */}
         <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 100 100">
           <circle className="text-gray-200" strokeWidth="6" stroke="currentColor" fill="transparent" r="46" cx="50" cy="50" />
           <circle
@@ -183,7 +176,6 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
           />
         </svg>
 
-        {/* Profile Image Input */}
         <div className="absolute inset-0 p-1.5 rounded-full">
           <label className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden cursor-pointer relative group bg-white shadow-inner ${!hasImage ? 'bg-red-50 border border-dashed border-red-200' : ''}`}>
             <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
@@ -201,8 +193,6 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
         </div>
       </div>
 
-      {/* 2. Info Section */}
-      {/* CHANGED: Removed negative margins (-ml-6) that might overlap layout */}
       <div className="flex flex-col items-start z-10">
         <div className="flex items-center space-x-1">
           <h1 className="text-2xl font-bold truncate max-w-[140px]">{displayName}{displayAge}</h1>
@@ -217,60 +207,104 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
         </button>
       </div>
       
-      {/* 3. Logout Section */}
-      {/* CHANGED: Used 'ml-auto' to push this element to the far right edge */}
       <div className="ml-auto">
           <button onClick={onSignOut} className="text-gray-400 hover:text-red-500 transition-colors p-2" title="Sign Out">
-            <LogOut size={24} /> {/* Increased size slightly for better visibility */}
+            <LogOut size={24} />
           </button>
       </div>
-
     </div>
   );
 };
 
-const DoubleDateBanner = () => (
-  <div className="px-4 mt-6">
-    <div className="flex items-center justify-between cursor-pointer p-4 bg-white rounded-lg shadow-sm">
-      <div className="flex items-center space-x-4">
-        <DoubleDateIcon />
-        <div>
-          <h2 className="font-bold text-gray-800">Try Double Date</h2>
-          <p className="text-sm text-gray-500">
-            Invite your friends and find other pairs.
-          </p>
+// --- DOUBLE DATE BANNER ---
+const DoubleDateBanner = ({ user }) => {
+  const userName = user?.displayName || user?.name || "your friend";
+  const appUrl = "https://dating-app-lemon-tau.vercel.app/"; 
+  const inviteText = `Hey! I'm using BSSS Dating to find my perfect match. Join ${userName} and check it out! ❤️ ${appUrl}`;
+
+  const handleWhatsAppShare = (e) => {
+    e.stopPropagation(); 
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(inviteText)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'BSSS Dating',
+          text: inviteText,
+          url: appUrl
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(inviteText);
+        alert("Invite link copied to clipboard!");
+      } catch (err) {
+        alert("Unable to copy link");
+      }
+    }
+  };
+
+  return (
+    <div className="px-4 mt-6">
+      <div 
+        onClick={handleNativeShare}
+        className="flex items-center justify-between cursor-pointer p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 group"
+      >
+        <div className="flex items-center space-x-4">
+          <DoubleDateIcon />
+          <div>
+            <h2 className="font-bold text-gray-800 group-hover:text-pink-600 transition-colors">Try Double Date</h2>
+            <p className="text-sm text-gray-500">
+              Invite friends & find pairs.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+            <button 
+                onClick={handleWhatsAppShare}
+                className="p-2 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                title="Share on WhatsApp"
+            >
+                <MessageCircle size={20} />
+            </button>
+            <ChevronRight size={24} className="text-gray-400 group-hover:text-pink-500 transition-colors" />
         </div>
       </div>
-      <ChevronRight size={24} className="text-gray-400" />
+    </div>
+  );
+};
+
+// --- UPDATED ActionGrid (Consumables Only) ---
+// Changed to 2 columns and removed the "Subscriptions" card to avoid redundancy
+const ActionGrid = () => (
+  <div className="px-4 mt-8">
+    <h3 className="text-lg font-bold text-gray-800 mb-3 px-1">Boost Your Profile</h3>
+    <div className="grid grid-cols-2 gap-3">
+      <ActionCard
+        icon={<Star size={36} className="text-blue-500" fill="currentColor" />}
+        title="Super Likes"
+        subtitle="Stand Out"
+        subtitleColor="text-blue-500"
+      />
+      <ActionCard
+        icon={<Zap size={36} className="text-purple-600" fill="currentColor" />}
+        title="Boosts"
+        subtitle="Be Top Profile"
+        subtitleColor="text-purple-600"
+      />
+      {/* Removed "Subscriptions" card as it duplicates the section below */}
     </div>
   </div>
 );
 
-const ActionGrid = () => (
-  <div className="grid grid-cols-3 gap-3 px-4 mt-6">
-    <ActionCard
-      icon={<Star size={36} className="text-blue-500" fill="currentColor" />}
-      title="Super Likes"
-      subtitle="GET MORE"
-      subtitleColor="text-blue-500"
-    />
-    <ActionCard
-      icon={<Zap size={36} className="text-purple-600" fill="currentColor" />}
-      title="Boosts"
-      subtitle="GET MORE"
-      subtitleColor="text-purple-600"
-    />
-    <ActionCard
-      icon={<Flame size={36} className="text-red-500" fill="currentColor" />}
-      title="Subscriptions"
-      subtitle="UPGRADE"
-      subtitleColor="text-red-500"
-    />
-  </div>
-);
-
 const ActionCard = ({ icon, title, subtitle, subtitleColor }) => (
-  <div className="relative flex flex-col items-center justify-center h-32 p-3 text-center bg-white rounded-lg shadow-sm">
+  <div className="relative flex flex-col items-center justify-center h-32 p-3 text-center bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
     <button className="absolute top-2 cursor-pointer right-2 flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full">
       <Plus size={14} className="text-gray-600" />
     </button>
@@ -391,7 +425,10 @@ const UpgradeCarousel = ({ onUpgrade }) => {
   }, []);
 
   return (
-    <div className="mt-6">
+    <div className="mt-8">
+      {/* Added Explicit Header for Membership Section */}
+      <h3 className="text-lg font-bold text-gray-800 mb-3 px-5">Membership Plans</h3>
+      
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -469,8 +506,6 @@ const AuthorPopup = ({ onClose }) => (
         </div>
 
        <div className="space-y-4">
-          
-          {/* 1. Professional Section -> Graduation Cap Icon */}
           <div className="flex items-start space-x-3 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
               <GraduationCap className="text-white w-6 h-6" />
@@ -481,7 +516,6 @@ const AuthorPopup = ({ onClose }) => (
             </div>
           </div>
 
-          {/* 2. Design Philosophy -> Palette Icon */}
           <div className="flex items-start space-x-3 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
               <Palette className="text-white w-6 h-6" />
@@ -492,7 +526,6 @@ const AuthorPopup = ({ onClose }) => (
             </div>
           </div>
 
-          {/* 3. Expertise -> Code Icon */}
           <div className="flex items-start space-x-3 bg-gradient-to-r from-pink-50 to-red-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
               <Code2 className="text-white w-6 h-6" />
@@ -519,9 +552,7 @@ const AuthorPopup = ({ onClose }) => (
 const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
   const [showAuthorPopup, setShowAuthorPopup] = useState(false);
 
-  // --- HANDLE PAYMENT UPGRADE ---
   const handleUpgrade = async (plan) => {
-    // 1. Define plan prices (in INR)
     const prices = {
       'gold': 199,
       'platinum': 499
@@ -530,10 +561,8 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
     const amount = prices[plan.type];
     if (!amount) return; 
 
-    // 2. Initialize Functions (Uses the imported 'app')
     const functions = getFunctions(app);
 
-    // 3. Load Razorpay SDK
     const res = await loadRazorpayScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) {
       alert("Razorpay SDK failed to load. Please check your internet connection.");
@@ -541,21 +570,18 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
     }
 
     try {
-        // 4. Call Cloud Function via SDK
         const createOrderFn = httpsCallable(functions, 'createOrder');
         const response = await createOrderFn({ amount: amount * 100 }); 
         const orderData = response.data;
 
-        // 5. Razorpay Options
         const options = {
-            key: "rzp_test_RoMYE85wG1Vzew", // Your Key ID
+            key: "rzp_test_RoMYE85wG1Vzew",
             amount: orderData.amount,
             currency: orderData.currency,
             name: "BSSS Dating",
             description: `Upgrade to ${plan.type}`,
             order_id: orderData.orderId, 
             handler: async function (response) {
-                // 6. Payment Success Handler
                 console.log("Payment Successful", response);
 
                 try {
@@ -605,14 +631,12 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
 
   return (
     <div className="flex flex-col pb-4">
-      {/* 👇 PASSING db TO ProfileHeader */}
       <ProfileHeader userData={userData} onNavigate={onNavigate} onSignOut={onSignOut} db={db} />
 
-      <DoubleDateBanner />
+      <DoubleDateBanner user={userData?.profile || userData?.auth} />
 
       <ActionGrid />
 
-      {/* Pass handleUpgrade to the carousel */}
       <UpgradeCarousel onUpgrade={handleUpgrade} />
 
       <AuthorSection onOpenPopup={() => setShowAuthorPopup(true)} />
