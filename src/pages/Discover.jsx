@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 
-// --- SVG Icons (Locally Defined - Keeping Original UI) ---
+// --- SVG Icons (Original) ---
 const X = ({ size = 24, strokeWidth = 2, className = '' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18M6 6l12 12" /></svg>
 );
@@ -95,7 +95,6 @@ const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) =>
 };
 
 const FullProfileView = ({ profile, onCollapse }) => {
-    // UPDATED BASICS DATA
     const basicsData = [
         { key: 'height', icon: Ruler, label: 'Height' },
         { key: 'exercise', icon: Dumbbell, label: 'Exercise' },
@@ -187,7 +186,7 @@ const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
     );
 });
 
-// --- ActionButtons ---
+// --- ActionButtons (UI UNCHANGED) ---
 const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike }) => {
     return (
         <div className="w-full pt-6 pb-4 sm:pb-8 px-4">
@@ -251,7 +250,7 @@ const Discover = () => {
     useEffect(() => {
         if (!currentUserId || !preference) return;
         
-        // ADDED LIMIT TO PREVENT CRASHING ON SLOW NETWORKS
+        // ADDED LIMIT(20) FOR PERFORMANCE
         const q = query(
             collection(db, 'users'), 
             where('gender', '==', preference), 
@@ -296,38 +295,44 @@ const Discover = () => {
         return () => unsubscribe();
     }, [currentUserId, preference]);
 
-    const handleSwipe = async (direction) => {
+    // --- LOGIC FIX: OPTIMISTIC UPDATE ---
+    const handleSwipe = (direction) => {
         if (!currentUserId || profiles.length === 0) return;
 
         const swipedUser = profiles[profiles.length - 1];
         const swipedUserId = swipedUser.id;
 
-        if (direction === 'right') {
-            try {
-                await setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
-                    liked: true,
-                    timestamp: serverTimestamp()
-                });
-
-                const chatId = [currentUserId, swipedUserId].sort().join("_");
-                await setDoc(doc(db, "matches", chatId), {
-                    users: [currentUserId, swipedUserId],
-                    usersIncluded: {
-                        [currentUserId]: true,
-                        [swipedUserId]: true
-                    },
-                    timestamp: serverTimestamp(),
-                    lastMessage: "You matched! Say hi 👋"
-                });
-            } catch (error) {
-                console.error("Error processing swipe:", error);
-            }
-        }
-
+        // 1. Instant UI Update
         setTimeout(() => {
             setHistory((prev) => [...prev, swipedUser]); 
             setProfiles((prev) => prev.slice(0, -1));    
         }, 300);
+
+        // 2. Async DB Update (No Await)
+        if (direction === 'right') {
+            const saveSwipe = async () => {
+                try {
+                    await setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
+                        liked: true,
+                        timestamp: serverTimestamp()
+                    });
+
+                    const chatId = [currentUserId, swipedUserId].sort().join("_");
+                    await setDoc(doc(db, "matches", chatId), {
+                        users: [currentUserId, swipedUserId],
+                        usersIncluded: {
+                            [currentUserId]: true,
+                            [swipedUserId]: true
+                        },
+                        timestamp: serverTimestamp(),
+                        lastMessage: "You matched! Say hi 👋"
+                    });
+                } catch (error) {
+                    console.error("Error processing swipe:", error);
+                }
+            };
+            saveSwipe();
+        }
     };
 
     const handleRewind = () => {
@@ -347,7 +352,7 @@ const Discover = () => {
     };
 
     return (
-        // FIXED HEIGHT FOR MOBILE: 100dvh - 9rem
+        // EXACT MOBILE HEIGHT FIX: 100dvh - 9rem
         <div className="mx-auto max-w-sm w-full h-[calc(100dvh-9rem)] flex flex-col mt-0 lg:mt-8 relative">
             <div className="flex-1 relative min-h-0">
                 <div className="absolute inset-0 p-4 sm:p-6">

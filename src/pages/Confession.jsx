@@ -12,7 +12,8 @@ import {
   orderBy,
   serverTimestamp,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  limit // 1. IMPORT LIMIT
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -42,9 +43,12 @@ const ConfessionPage = () => {
   }, []);
 
   useEffect(() => {
+    // 2. PERFORMANCE FIX: Added 'limit(30)'
+    // This prevents the phone from trying to render 1000s of items at once.
     const q = query(
       collection(db, "confessions"),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
+      limit(30) 
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -181,9 +185,9 @@ const ConfessionPage = () => {
             <textarea
               value={newConfession}
               onChange={(e) => setNewConfession(e.target.value)}
-              placeholder="What's on your mind ?"
+              placeholder="What's on your mind?"
               disabled={!currentUser}
-              // Zoom fix preserved (text-base on mobile)
+              // Zoom fix preserved
               className="w-full p-4 border-2 border-purple-300 rounded-2xl focus:border-purple-600 outline-none resize-none text-gray-700 text-base md:text-sm placeholder-gray-400"
               rows="3"
             />
@@ -276,11 +280,10 @@ const ConfessionPage = () => {
                   </p>
                 )}
 
-                {/* LIKE & DISLIKE BUTTONS - SPLIT LEFT & RIGHT */}
-                {/* 'justify-between' pushes items to opposite edges */}
+                {/* LIKE & DISLIKE BUTTONS - SPLIT */}
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
                   
-                  {/* LIKE (Left Side) */}
+                  {/* LIKE */}
                   <button
                     onClick={() => toggleLike(confession.id, confession.liked, confession.disliked)}
                     className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl transition-all font-medium min-w-[80px] ${
@@ -293,7 +296,7 @@ const ConfessionPage = () => {
                     <span className="text-sm font-bold">{confession.likes || 0}</span>
                   </button>
 
-                  {/* DISLIKE (Right Side) */}
+                  {/* DISLIKE */}
                   <button
                     onClick={() => toggleDislike(confession.id, confession.disliked, confession.liked)}
                     className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl transition-all font-medium min-w-[80px] ${
