@@ -11,7 +11,7 @@ import {
   Zap,
   Flame,
   X,
-  User, // We use User instead of UserSquare
+  User, 
   LogOut,
   Loader,
   Briefcase,
@@ -38,7 +38,6 @@ import {
   ListMusic,
   GraduationCap,
   ArrowLeft,
-  // UserSquare, // ❌ REMOVED: This causes the crash in new Lucide versions
 } from "lucide-react";
 import { doc, setDoc } from "firebase/firestore";
 import {
@@ -973,7 +972,8 @@ export default function EditProfile({
     <div className="bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto bg-white min-h-screen">
         <header className="border-b border-gray-200 sticky top-0 bg-white z-20">
-          <div className="flex justify-between items-center px-6 py-4">
+          {/* UPDATED: Changed px-6 to px-4 to match body content alignment */}
+          <div className="flex justify-between items-center px-4 lg:px-8 py-4">
             <button
               onClick={() => onNavigate && onNavigate("profile")}
               className="p-2 -ml-2 hover:bg-gray-100 cursor-pointer rounded-full transition-colors"
@@ -993,7 +993,8 @@ export default function EditProfile({
               )}
             </button>
           </div>
-          <div className="flex px-6">
+          {/* UPDATED: Changed px-6 to px-4 to match alignment */}
+          <div className="flex px-4 lg:px-8">
             <button
               onClick={() => setActiveTab("edit")}
               className={`flex-1 py-3 text-center cursor-pointer font-semibold text-sm transition-colors relative ${

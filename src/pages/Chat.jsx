@@ -406,11 +406,13 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
 
       {/* 3. FIXED INPUT AREA */}
       <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0">
-        <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-full border border-gray-200">
+        <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-full">
+          {/* RESTORED IMAGE UPLOAD ICON */}
           <label className="p-2 text-gray-400 hover:text-purple-600 cursor-pointer transition-colors">
             <Image size={20} />
             <input type="file" hidden accept="image/*" onChange={(e) => handleFileUpload(e.target.files[0], "image")} disabled={uploading} />
           </label>
+          
           <input
             type="text"
             placeholder="Type a message..."
@@ -418,7 +420,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
             onChange={(e) => setMessageText(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
             disabled={uploading}
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-800 placeholder-gray-400"
+            className="flex-1 bg-transparent border-none focus:ring-0 outline-none text-sm text-gray-800 placeholder-gray-400 px-2"
           />
           <button
             onClick={handleSend}

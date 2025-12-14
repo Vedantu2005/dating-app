@@ -1,5 +1,6 @@
 import React, { useState, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
-import { MessageCircle } from 'lucide-react';
+// 1. ADD NEW IMPORTS HERE
+import { MessageCircle, Ruler, Dumbbell, Cigarette, Wine, Sparkles } from 'lucide-react';
 import { 
     collection, 
     onSnapshot, 
@@ -7,7 +8,6 @@ import {
     where, 
     doc, 
     orderBy, 
-    getDoc, 
     setDoc, 
     serverTimestamp 
 } from 'firebase/firestore';
@@ -95,7 +95,16 @@ const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) =>
 };
 
 const FullProfileView = ({ profile, onCollapse }) => {
-    const basicsData = [{ key: 'height', emoji: '棟' }, { key: 'exercise', emoji: '潮' }, { key: 'education', emoji: '雌' }, { key: 'smoking', emoji: '坏' }, { key: 'drinking', emoji: '差' }, { key: 'zodiac', emoji: '笙' }];
+    // 2. UPDATED BASICS DATA WITH PROPER ICONS (Replaced broken emojis)
+    const basicsData = [
+        { key: 'height', icon: Ruler, label: 'Height' },
+        { key: 'exercise', icon: Dumbbell, label: 'Exercise' },
+        { key: 'education', icon: GraduationCap, label: 'Education' },
+        { key: 'smoking', icon: Cigarette, label: 'Smoking' },
+        { key: 'drinking', icon: Wine, label: 'Drinking' },
+        { key: 'zodiac', icon: Sparkles, label: 'Zodiac' }
+    ];
+
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-gray-50">
             <button onClick={onCollapse} className="absolute cursor-pointer top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition-all hover:bg-black/50"><ChevronDown size={28} /></button>
@@ -111,7 +120,26 @@ const FullProfileView = ({ profile, onCollapse }) => {
                 </div>
                 <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><p className="text-gray-900 text-base leading-relaxed">{profile.bio}</p></div>
                 {profile.prompts.map((prompt, index) => (<div key={index} className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><div className="text-sm font-bold uppercase tracking-wide mb-2.5" style={{ color: THEME_COLOR }}>{prompt.question}</div><p className="text-gray-900 text-base leading-relaxed">{prompt.answer}</p></div>))}
-                <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><h3 className="text-xl font-bold text-gray-900 mb-4">My basics</h3><div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{basicsData.map((item) => profile[item.key] ? (<div key={item.key} className="flex items-center gap-3"><div className="text-2xl">{item.emoji}</div><div className="text-base text-gray-900">{profile[item.key]}</div></div>) : null)}</div></div>
+                
+                {/* 3. UPDATED RENDERING FOR ICONS */}
+                <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">My basics</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {basicsData.map((item) => {
+                            // Check if profile has data for this key
+                            if (!profile[item.key]) return null;
+                            const IconComponent = item.icon;
+                            return (
+                                <div key={item.key} className="flex items-center gap-3">
+                                    {/* Render Icon Component instead of broken text */}
+                                    <IconComponent size={24} className="text-gray-500" />
+                                    <div className="text-base text-gray-900">{profile[item.key]}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
                 <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><h3 className="text-xl font-bold text-gray-900 mb-4">My interests</h3><div className="flex flex-wrap gap-2.5">{profile.interests.map((interest) => (<span key={interest} className="inline-flex items-center rounded-full px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-semibold" style={{ backgroundColor: '#FFF5E6', color: '#CC8800', border: '1.5px solid #FFE0B2' }}>{interest}</span>))}</div></div>
             </div>
         </div>
@@ -162,14 +190,11 @@ const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
     );
 });
 
-// --- UPDATED ActionButtons: Fixed Circular Shapes ---
+// --- ActionButtons ---
 const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike }) => {
     return (
         <div className="w-full pt-6 pb-4 sm:pb-8 px-4">
             <div className="flex items-center justify-center gap-4 md:gap-6">
-                {/* Added 'flex-shrink-0' and 'aspect-square' to prevent oval shapes.
-                   Used 'rounded-full' to ensure perfect circles.
-                */}
                 <button 
                     onClick={onRewind} 
                     className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 shadow-lg text-white border-2 border-yellow-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
@@ -209,7 +234,7 @@ const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike }) => {
 
 const Discover = () => {
     const [profiles, setProfiles] = useState([]);
-    const [history, setHistory] = useState([]); // --- NEW HISTORY STATE ---
+    const [history, setHistory] = useState([]); 
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandedProfile, setExpandedProfile] = useState(null);
     const [currentUserData, setCurrentUserData] = useState(null);
@@ -228,7 +253,7 @@ const Discover = () => {
 
     useEffect(() => {
         if (!currentUserId || !preference) return;
-        // Fetch users who are NOT the current user and match preference
+        
         const q = query(collection(db, 'users'), where('gender', '==', preference), orderBy("displayName", "asc"));
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -268,7 +293,6 @@ const Discover = () => {
         return () => unsubscribe();
     }, [currentUserId, preference]);
 
-    // --- SWIPE HANDLER with HISTORY ---
     const handleSwipe = async (direction) => {
         if (!currentUserId || profiles.length === 0) return;
 
@@ -278,13 +302,11 @@ const Discover = () => {
         if (direction === 'right') {
             console.log("Swiped Right on:", swipedUser.name);
             try {
-                // 1. Record the Like
                 await setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
                     liked: true,
                     timestamp: serverTimestamp()
                 });
 
-                // 2. FORCE MATCH (DEMO MODE)
                 const chatId = [currentUserId, swipedUserId].sort().join("_");
                 await setDoc(doc(db, "matches", chatId), {
                     users: [currentUserId, swipedUserId],
@@ -300,14 +322,12 @@ const Discover = () => {
             }
         }
 
-        // Remove card from view and ADD TO HISTORY
         setTimeout(() => {
-            setHistory((prev) => [...prev, swipedUser]); // Add to history stack
-            setProfiles((prev) => prev.slice(0, -1));    // Remove from active stack
+            setHistory((prev) => [...prev, swipedUser]); 
+            setProfiles((prev) => prev.slice(0, -1));    
         }, 300);
     };
 
-    // --- NEW REWIND HANDLER ---
     const handleRewind = () => {
         if (history.length === 0) {
             console.log("No history to rewind");
@@ -315,11 +335,7 @@ const Discover = () => {
         }
 
         const lastSwipedUser = history[history.length - 1];
-
-        // 1. Remove from history
         setHistory((prev) => prev.slice(0, -1));
-
-        // 2. Add back to profiles (active stack)
         setProfiles((prev) => [...prev, lastSwipedUser]);
     };
 
@@ -358,7 +374,6 @@ const Discover = () => {
                 </div>
             </div>
             
-            {/* Action Buttons with Rewind */}
             <div className="flex-shrink-0">
                 <ActionButtons 
                     onLike={() => triggerSwipe('right')} 

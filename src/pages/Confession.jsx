@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MessageCircle, Trash2, Edit2, User } from "lucide-react";
+import { Trash2, Edit2, User } from "lucide-react"; // Removed MessageCircle
 import { db, auth } from "../firebaseConfig";
 import {
   collection,
@@ -12,11 +12,10 @@ import {
   orderBy,
   serverTimestamp,
   arrayUnion,
-  arrayRemove,
-  increment // Make sure this is imported
+  arrayRemove
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import CommentPopup from "../components/CommentPop";
+// Removed CommentPopup import
 
 const customStyles = `
   @keyframes slideIn {
@@ -33,11 +32,9 @@ const ConfessionPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [confessions, setConfessions] = useState([]);
   const [newConfession, setNewConfession] = useState("");
-  // const [showCommentBox, setShowCommentBox] = useState({}); // Unused in this version
-  // const [commentText, setCommentText] = useState(""); // Unused in this version
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
-  const [activeCommentId, setActiveCommentId] = useState(null);
+  // Removed activeCommentId state
 
   // 1. Listen for Authentication State
   useEffect(() => {
@@ -179,8 +176,9 @@ const ConfessionPage = () => {
       <div className="min-h-screen w-full bg-gradient-to-br from-[#E6E6FA] via-purple-200 to-purple-300 p-8">
         {/* Header */}
         <div className="text-center mb-8 animate-[slideIn_0.6s_ease-out]">
+          {/* UPDATED: Removed the emoji icon */}
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent mb-2">
-            🤫 Confessions
+            Confessions
           </h1>
           <p className="text-gray-600 text-base">
             Share your heart, find your people
@@ -193,7 +191,7 @@ const ConfessionPage = () => {
             <textarea
               value={newConfession}
               onChange={(e) => setNewConfession(e.target.value)}
-              placeholder="What's on your mind?" // <--- UPDATED PLACEHOLDER
+              placeholder="What's on your mind?"
               disabled={!currentUser}
               className="w-full p-4 border-2 border-purple-300 rounded-2xl focus:border-purple-600 outline-none resize-none text-gray-700 text-sm placeholder-gray-400"
               rows="3"
@@ -287,8 +285,8 @@ const ConfessionPage = () => {
                   </p>
                 )}
 
-                {/* Interaction Buttons */}
-                <div className="flex gap-3 pt-4 border-t border-gray-200 justify-between">
+                {/* Interaction Buttons - UPDATED: Comments Removed */}
+                <div className="flex gap-3 pt-4 border-t border-gray-200 justify-start">
                   <button
                     onClick={() =>
                       toggleLike(
@@ -324,48 +322,7 @@ const ConfessionPage = () => {
                     <span className="text-lg">👎</span>
                     <span className="font-bold">{confession.dislikes}</span>
                   </button>
-
-                  <button
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-purple-100 transition-all font-semibold text-sm"
-                    onClick={() =>
-                      setActiveCommentId(
-                        activeCommentId === confession.id ? null : confession.id
-                      )
-                    }
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    <span className="font-bold">
-                      {confession.commentCount || 0}
-                    </span>
-                  </button>
                 </div>
-
-                {/* Comment Popup */}
-                {activeCommentId === confession.id && (
-                  <CommentPopup
-                    confession={confession}
-                    onClose={() => {
-                      setActiveCommentId(null);
-                    }}
-                    onCommentAdded={async () => {
-                      setConfessions((prev) =>
-                        prev.map((c) =>
-                          c.id === confession.id
-                            ? { ...c, commentCount: (c.commentCount || 0) + 1 }
-                            : c
-                        )
-                      );
-                      try {
-                        // Using imported increment function directly
-                        await updateDoc(doc(db, "confessions", confession.id), {
-                          commentCount: increment(1),
-                        });
-                      } catch (error) {
-                        console.error("Failed to update Firestore:", error);
-                      }
-                    }}
-                  />
-                )}
               </div>
             ))}
           </div>
