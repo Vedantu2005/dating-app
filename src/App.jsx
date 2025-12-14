@@ -1,49 +1,49 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import React, { Suspense } from 'react'; // Added Suspense
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Auth Context
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Pages
-import AuthPage from './components/Auth';
-import ForgotPasswordPage from './components/ForgotPassword'; // *** CORRECT IMPORT ADDED ***
-import DiscoverPage from './pages/Discover';
-import ConfessionsPage from './pages/Confession';
-import ChatPage from './pages/Chat';
-import ProfilePage from './pages/Profile';
-import { usePresence } from './usePresence';
-
 // Components
 import Navbar from './components/Navbar';
-import Loading from './components/Loading'; // Use custom Loading component
+import Loading from './components/Loading'; 
+import { usePresence } from './usePresence';
 
-// Protected Route Component (Simplified using AuthContext)
+// --- LAZY LOAD PAGES (Performance Optimization) ---
+// Instead of importing directly, we load them only when needed
+const AuthPage = React.lazy(() => import('./components/Auth'));
+const ForgotPasswordPage = React.lazy(() => import('./components/ForgotPassword'));
+const DiscoverPage = React.lazy(() => import('./pages/Discover'));
+const ConfessionsPage = React.lazy(() => import('./pages/Confession'));
+const ChatPage = React.lazy(() => import('./pages/Chat'));
+const ProfilePage = React.lazy(() => import('./pages/Profile'));
+
+// Protected Route Component
 const ProtectedRoute = ({ children }) => {
-    const { currentUser, loading } = useAuth(); // Use context here
+    const { currentUser, loading } = useAuth(); 
 
-    // NOTE: Loading component is used here.
     if (loading) return <Loading />;
     if (!currentUser) return <Navigate to="/" replace />;
 
     return children;
 };
 
-// Main Layout for Authenticated Users
+// Main Layout
 const AppLayout = () => {
-    // Navbar components now correctly derive active status from useLocation internally
     return (
         <div className="min-h-screen bg-[#E6E6FA] text-[#3730A3]">
-            {/* Navbar reads its own location for active state */}
             <Navbar /> 
-            {/* Adjusted padding for mobile (h-16 Navbar) and desktop (h-20 Navbar) */}
             <main className="pt-16 pb-20 md:pb-0 md:pt-20 transition-all duration-300 min-h-[calc(100vh-140px)]"> 
-                <Routes>
-                    <Route path="/discover" element={<DiscoverPage />} />
-                    <Route path="/confessions" element={<ConfessionsPage />} />
-                    <Route path="/chat" element={<ChatPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="*" element={<Navigate to="/discover" replace />} />
-                </Routes>
+                {/* Suspense shows the Loading component while the page code is downloading */}
+                <Suspense fallback={<Loading />}>
+                    <Routes>
+                        <Route path="/discover" element={<DiscoverPage />} />
+                        <Route path="/confessions" element={<ConfessionsPage />} />
+                        <Route path="/chat" element={<ChatPage />} />
+                        <Route path="/profile" element={<ProfilePage />} />
+                        <Route path="*" element={<Navigate to="/discover" replace />} />
+                    </Routes>
+                </Suspense>
             </main>
         </div>
     );
@@ -51,10 +51,9 @@ const AppLayout = () => {
 
 export default function App() {
     usePresence();
-    // The main App component only provides the BrowserRouter wrapper.
+    
     return (
         <BrowserRouter>
-            {/* WRAP THE ENTIRE APPLICATION WITH AuthProvider */}
             <AuthProvider>
                 <AppContent />
             </AuthProvider>
@@ -62,7 +61,6 @@ export default function App() {
     );
 }
 
-// Inner component to access context and handle top-level routing
 const AppContent = () => {
     const { currentUser, loading } = useAuth();
 
@@ -75,28 +73,28 @@ const AppContent = () => {
     }
 
     return (
-        <Routes>
-            {/* Public Route - Auth. Redirects if user is logged in. */}
-            <Route
-                path="/"
-                element={currentUser ? <Navigate to="/discover" replace /> : <AuthPage />}
-            />
-            
-            {/* *** FIX: NEW PUBLIC ROUTE FOR PASSWORD RESET *** */}
-            <Route
-                path="/forgot-password"
-                element={<ForgotPasswordPage />}
-            />
+        // Wrap public routes in Suspense as well
+        <Suspense fallback={<Loading />}>
+            <Routes>
+                <Route
+                    path="/"
+                    element={currentUser ? <Navigate to="/discover" replace /> : <AuthPage />}
+                />
+                
+                <Route
+                    path="/forgot-password"
+                    element={<ForgotPasswordPage />}
+                />
 
-            {/* Protected Routes - App Layout */}
-            <Route
-                path="/*"
-                element={
-                    <ProtectedRoute>
-                        <AppLayout />
-                    </ProtectedRoute>
-                }
-            />
-        </Routes>
+                <Route
+                    path="/*"
+                    element={
+                        <ProtectedRoute>
+                            <AppLayout />
+                        </ProtectedRoute>
+                    }
+                />
+            </Routes>
+        </Suspense>
     );
 }
