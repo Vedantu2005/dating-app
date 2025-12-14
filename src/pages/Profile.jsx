@@ -18,7 +18,8 @@ import {
   Palette, 
   Code2,
   Share2, 
-  MessageCircle 
+  MessageCircle,
+  Instagram // 1. IMPORT INSTAGRAM
 } from 'lucide-react';
 
 // Firebase Imports
@@ -280,8 +281,7 @@ const DoubleDateBanner = ({ user }) => {
   );
 };
 
-// --- UPDATED ActionGrid (Consumables Only) ---
-// Changed to 2 columns and removed the "Subscriptions" card to avoid redundancy
+// --- ActionGrid ---
 const ActionGrid = () => (
   <div className="px-4 mt-8">
     <h3 className="text-lg font-bold text-gray-800 mb-3 px-1">Boost Your Profile</h3>
@@ -298,7 +298,6 @@ const ActionGrid = () => (
         subtitle="Be Top Profile"
         subtitleColor="text-purple-600"
       />
-      {/* Removed "Subscriptions" card as it duplicates the section below */}
     </div>
   </div>
 );
@@ -426,7 +425,6 @@ const UpgradeCarousel = ({ onUpgrade }) => {
 
   return (
     <div className="mt-8">
-      {/* Added Explicit Header for Membership Section */}
       <h3 className="text-lg font-bold text-gray-800 mb-3 px-5">Membership Plans</h3>
       
       <div
@@ -478,6 +476,7 @@ const AuthorSection = ({ onOpenPopup }) => (
   </div>
 );
 
+// --- AUTHOR POPUP (UPDATED) ---
 const AuthorPopup = ({ onClose }) => (
   <div
     className="fixed inset-0 bg-black/10 bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
@@ -516,15 +515,21 @@ const AuthorPopup = ({ onClose }) => (
             </div>
           </div>
 
-          <div className="flex items-start space-x-3 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-              <Palette className="text-white w-6 h-6" />
+          {/* 2. REPLACED PALETTE WITH INSTAGRAM (Clickable Link) */}
+          <a 
+            href="https://www.instagram.com/bsssdating?igsh=MW92bmpja2M3N2ZnOA%3D%3D&utm_source=qr" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-start space-x-3 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl hover:bg-pink-100 transition-colors cursor-pointer group"
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md group-hover:shadow-lg transition-all">
+              <Instagram className="text-white w-6 h-6" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">Design Philosophy</p>
               <p className="text-xs text-gray-600 mt-1">Creating intuitive interfaces that blend aesthetics with functionality.</p>
             </div>
-          </div>
+          </a>
 
           <div className="flex items-start space-x-3 bg-gradient-to-r from-pink-50 to-red-50 p-4 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
