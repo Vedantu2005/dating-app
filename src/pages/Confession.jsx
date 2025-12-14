@@ -191,7 +191,7 @@ const ConfessionPage = () => {
             <textarea
               value={newConfession}
               onChange={(e) => setNewConfession(e.target.value)}
-              placeholder="What's on your mind?"
+              placeholder="What's on your mind ?"
               disabled={!currentUser}
               className="w-full p-4 border-2 border-purple-300 rounded-2xl focus:border-purple-600 outline-none resize-none text-gray-700 text-sm placeholder-gray-400"
               rows="3"
