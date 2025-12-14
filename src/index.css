@@ -20,3 +20,11 @@ body {
 .hello {
     border: 2px solid red;
 }
+
+/* --- FIX: PREVENT ZOOM ON MOBILE INPUTS --- */
+/* Forces 16px font size on inputs for screens smaller than 768px */
+@media screen and (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}

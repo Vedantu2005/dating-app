@@ -31,7 +31,6 @@ import {
 } from "firebase/storage";
 import { ref as rtdbRef, onValue } from "firebase/database";
 
-// --- STYLES ---
 const customStyles = `
   .custom-scrollbar::-webkit-scrollbar { width: 5px; }
   .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -43,7 +42,6 @@ const getChatId = (userAId, userBId) => {
   return userAId < userBId ? `${userAId}_${userBId}` : `${userBId}_${userAId}`;
 };
 
-// --- COMPONENT: CHAT LIST (Left Side) ---
 const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState([]);
@@ -56,13 +54,11 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
     return () => unsub();
   }, []);
 
-  // --- RED LIKE FUNCTIONALITY ---
   const toggleFavorite = async (e, match) => {
     e.stopPropagation(); 
     if (!currentUserId || !match.chatId) return;
 
     const matchRef = doc(db, "matches", match.chatId);
-    
     try {
       await updateDoc(matchRef, {
         [`favorites.${currentUserId}`]: !match.isFavorite
@@ -123,7 +119,6 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
     <div className="flex flex-col h-full bg-white border-r border-gray-200">
       <style>{customStyles}</style>
       
-      {/* Header with Purple Background */}
       <div className="px-6 py-6 bg-[#9333ea] text-white shadow-md z-10 flex-shrink-0">
         <h1 className="text-2xl font-bold mb-4">Messages</h1>
         <div className="relative">
@@ -133,12 +128,12 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
             placeholder="Search matches..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white/20 rounded-xl text-sm text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 border-none"
+            // FIX: text-base for mobile, md:text-sm for laptop
+            className="w-full pl-10 pr-4 py-2 bg-white/20 rounded-xl text-base md:text-sm text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 border-none"
           />
         </div>
       </div>
 
-      {/* List Area - SEPARATE SCROLL */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
         {isLoading ? (
              <div className="py-10 text-center"><Loader2 className="w-6 h-6 mx-auto animate-spin text-purple-500" /></div>
@@ -162,8 +157,6 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
                   <div className="flex-1 text-left overflow-hidden">
                     <div className="flex justify-between items-center mb-0.5">
                         <h3 className="font-bold text-gray-900 truncate text-sm">{match.name}</h3>
-                        
-                        {/* HEART BUTTON */}
                         <div 
                           onClick={(e) => toggleFavorite(e, match)}
                           className="p-1.5 rounded-full hover:bg-white/50 cursor-pointer transition-all"
@@ -194,7 +187,6 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
   );
 };
 
-// --- COMPONENT: CHAT WINDOW (Right Side) ---
 const IndividualChat = ({ chat, onBack, currentUserId }) => {
   const [messageText, setMessageText] = useState("");
   const [messages, setMessages] = useState([]);
@@ -250,7 +242,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
 
   return (
     <div className="flex flex-col h-full bg-[#f3f4f6]">
-      {/* Sticky Header: Name and Status */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 shadow-sm z-10 h-[72px]">
         <div className="flex items-center gap-3">
             <button onClick={onBack} className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full">
@@ -270,7 +261,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         </button>
       </div>
 
-      {/* Scrollable Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar" ref={scrollRef}>
         {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.isMe ? "justify-end" : "justify-start"}`}>
@@ -294,7 +284,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         ))}
       </div>
 
-      {/* Sticky Footer: Input Field */}
       <div className="flex-shrink-0 p-3 bg-white border-t border-gray-200">
         <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full pl-4 border border-transparent focus-within:border-purple-300 focus-within:bg-white focus-within:shadow-sm transition-all">
           <label className="p-2 text-gray-400 hover:text-purple-600 cursor-pointer transition-colors">
@@ -309,7 +298,8 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
             onChange={(e) => setMessageText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             disabled={uploading}
-            className="flex-1 bg-transparent border-none focus:ring-0 outline-none text-sm text-gray-800 placeholder-gray-500"
+            // FIX: text-base for mobile, md:text-sm for laptop
+            className="flex-1 bg-transparent border-none focus:ring-0 outline-none text-base md:text-sm text-gray-800 placeholder-gray-500"
           />
           
           <button
@@ -329,7 +319,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
   );
 };
 
-// --- MAIN PAGE LAYOUT ---
 export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState(null);
   const { currentUser, loading } = useAuth();
@@ -338,13 +327,8 @@ export default function ChatPage() {
   if (!currentUser?.uid) return <div className="h-screen flex items-center justify-center">Please log in.</div>;
 
   return (
-    // FIX: Dynamic Height for Mobile to ensure Input Field is visible (100dvh - 9rem)
-    // 100dvh handles mobile browser address bars.
-    // -9rem accounts for the Top Navbar (~4rem) and Bottom Mobile Navbar (~5rem).
     <div className="h-[calc(100dvh-9rem)] md:h-[calc(100vh-5rem)] w-full flex overflow-hidden bg-white">
         
-        {/* LEFT PARTITION (Chat List) */}
-        {/* Mobile: Hidden if chat selected. Desktop: Always visible (450px) */}
         <div className={`
             h-full flex-shrink-0 bg-white
             ${selectedChat ? "hidden md:block w-[380px] lg:w-[450px]" : "w-full md:w-[380px] lg:w-[450px]"}
@@ -356,8 +340,6 @@ export default function ChatPage() {
           />
         </div>
 
-        {/* RIGHT PARTITION (Chat Window) */}
-        {/* Mobile: Full Screen if chat selected. Desktop: Remaining Space */}
         <div className={`
             h-full bg-gray-50
             ${selectedChat ? "w-full flex md:flex-1" : "hidden md:flex md:flex-1"}

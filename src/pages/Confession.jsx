@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Trash2, Edit2, User } from "lucide-react"; // Removed MessageCircle
+import { Trash2, Edit2, User } from "lucide-react"; 
 import { db, auth } from "../firebaseConfig";
 import {
   collection,
@@ -15,7 +15,6 @@ import {
   arrayRemove
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-// Removed CommentPopup import
 
 const customStyles = `
   @keyframes slideIn {
@@ -34,9 +33,7 @@ const ConfessionPage = () => {
   const [newConfession, setNewConfession] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
-  // Removed activeCommentId state
 
-  // 1. Listen for Authentication State
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -44,7 +41,6 @@ const ConfessionPage = () => {
     return () => unsubscribe();
   }, []);
 
-  // 2. Listen for Real-time Confessions from Firestore
   useEffect(() => {
     const q = query(
       collection(db, "confessions"),
@@ -75,7 +71,6 @@ const ConfessionPage = () => {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // 3. Helper: Format Date
   const formatDate = (timestamp) => {
     if (!timestamp) return "Just now";
     return timestamp.toDate().toLocaleString("en-US", {
@@ -86,7 +81,6 @@ const ConfessionPage = () => {
     });
   };
 
-  // 4. Post Confession to Firestore
   const postConfession = async () => {
     if (!newConfession.trim()) return;
     if (!currentUser) return alert("You must be logged in to post.");
@@ -107,7 +101,6 @@ const ConfessionPage = () => {
     }
   };
 
-  // 5. Toggle Like
   const toggleLike = async (id, currentLiked, currentDisliked) => {
     if (!currentUser) return alert("Please log in to vote.");
     const docRef = doc(db, "confessions", id);
@@ -126,7 +119,6 @@ const ConfessionPage = () => {
     }
   };
 
-  // 6. Toggle Dislike
   const toggleDislike = async (id, currentDisliked, currentLiked) => {
     if (!currentUser) return alert("Please log in to vote.");
     const docRef = doc(db, "confessions", id);
@@ -145,7 +137,6 @@ const ConfessionPage = () => {
     }
   };
 
-  // 7. Save Edit
   const saveEdit = async (id) => {
     try {
       await updateDoc(doc(db, "confessions", id), {
@@ -158,7 +149,6 @@ const ConfessionPage = () => {
     }
   };
 
-  // 8. Delete Confession
   const deleteConfession = async (id) => {
     if (window.confirm("Are you sure you want to delete this confession?")) {
       try {
@@ -174,9 +164,7 @@ const ConfessionPage = () => {
       <style>{customStyles}</style>
 
       <div className="min-h-screen w-full bg-gradient-to-br from-[#E6E6FA] via-purple-200 to-purple-300 p-8">
-        {/* Header */}
         <div className="text-center mb-8 animate-[slideIn_0.6s_ease-out]">
-          {/* UPDATED: Removed the emoji icon */}
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent mb-2">
             Confessions
           </h1>
@@ -185,15 +173,15 @@ const ConfessionPage = () => {
           </p>
         </div>
 
-        {/* Post Confession Box */}
         <div className="w-full mb-8 animate-[slideIn_0.5s_ease-out]">
           <div className="max-w-4xl mx-auto bg-white/98 backdrop-blur-sm rounded-3xl p-5 shadow-xl">
             <textarea
               value={newConfession}
               onChange={(e) => setNewConfession(e.target.value)}
-              placeholder="What's on your mind ?"
+              placeholder="What's on your mind?"
               disabled={!currentUser}
-              className="w-full p-4 border-2 border-purple-300 rounded-2xl focus:border-purple-600 outline-none resize-none text-gray-700 text-sm placeholder-gray-400"
+              // FIX: 'text-base' for mobile (prevents zoom), 'md:text-sm' for laptop
+              className="w-full p-4 border-2 border-purple-300 rounded-2xl focus:border-purple-600 outline-none resize-none text-gray-700 text-base md:text-sm placeholder-gray-400"
               rows="3"
             />
             <button
@@ -208,7 +196,6 @@ const ConfessionPage = () => {
           </div>
         </div>
 
-        {/* Confessions Grid */}
         <div className="w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
             {confessions.map((confession, index) => (
@@ -217,7 +204,6 @@ const ConfessionPage = () => {
                 className="bg-white/98 backdrop-blur-sm rounded-3xl p-6 shadow-lg hover:shadow-2xl transition-all animate-[slideIn_0.5s_ease-out] flex flex-col group relative"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
-                {/* Author & Date */}
                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
                   <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
                     <User size={16} />
@@ -232,7 +218,6 @@ const ConfessionPage = () => {
                   </div>
                 </div>
 
-                {/* Edit/Delete Buttons */}
                 {currentUser && confession.userId === currentUser.uid && (
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -255,13 +240,12 @@ const ConfessionPage = () => {
                   </div>
                 )}
 
-                {/* Content */}
                 {editingId === confession.id ? (
                   <div className="mb-4">
                     <textarea
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
-                      className="w-full p-3 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none resize-none text-sm"
+                      className="w-full p-3 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none resize-none text-base md:text-sm"
                       rows="3"
                     />
                     <div className="flex gap-2 mt-3">
@@ -285,7 +269,6 @@ const ConfessionPage = () => {
                   </p>
                 )}
 
-                {/* Interaction Buttons - UPDATED: Comments Removed */}
                 <div className="flex gap-3 pt-4 border-t border-gray-200 justify-start">
                   <button
                     onClick={() =>
