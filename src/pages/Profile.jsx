@@ -526,8 +526,8 @@ const AuthorPopup = ({ onClose }) => (
               <Instagram className="text-white w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-800">Design Philosophy</p>
-              <p className="text-xs text-gray-600 mt-1">Creating intuitive interfaces that blend aesthetics with functionality.</p>
+              <p className="text-sm font-semibold text-gray-800">Instagram</p>
+              <p className="text-xs text-gray-600 mt-1">Follow - bsssdating</p>
             </div>
           </a>
 
