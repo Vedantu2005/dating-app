@@ -9,39 +9,74 @@ import {
     orderBy, 
     setDoc, 
     serverTimestamp,
-    limit // IMPORTED LIMIT
+    limit 
 } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 
-// --- SVG Icons (Kept same as before) ---
-const X = ({ size = 24, strokeWidth = 2, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18M6 6l12 12" /></svg>);
-const Heart = ({ size = 24, fill = 'none', className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>);
-const Star = ({ size = 24, fill = 'none', className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>);
-const Undo2 = ({ size = 24, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" /></svg>);
-const MapPin = ({ size = 24, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>);
-const Briefcase = ({ size = 24, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>);
-const GraduationCap = ({ size = 24, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" /></svg>);
-const Check = ({ size = 24, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 6 9 17l-5-5" /></svg>);
-const ChevronDown = ({ size = 24, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6" /></svg>);
-const Info = ({ size = 24, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>);
-const ChevronLeft = ({ size = 24, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6" /></svg>);
-const ChevronRight = ({ size = 24, className = '' }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6" /></svg>);
+// --- SVG Icons (Locally Defined - Keeping Original UI) ---
+const X = ({ size = 24, strokeWidth = 2, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18M6 6l12 12" /></svg>
+);
+const Heart = ({ size = 24, fill = 'none', className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+);
+const Star = ({ size = 24, fill = 'none', className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+);
+const Undo2 = ({ size = 24, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" /></svg>
+);
+const MapPin = ({ size = 24, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+);
+const Briefcase = ({ size = 24, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
+);
+const GraduationCap = ({ size = 24, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" /></svg>
+);
+const Check = ({ size = 24, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 6 9 17l-5-5" /></svg>
+);
+const ChevronDown = ({ size = 24, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6" /></svg>
+);
+const Info = ({ size = 24, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+);
+const ChevronLeft = ({ size = 24, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6" /></svg>
+);
+const ChevronRight = ({ size = 24, className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6" /></svg>
+);
 
 const THEME_COLOR = 'oklch(49.6% 0.265 301.924)';
 const THEME_COLOR1 = 'oklch(19.2% 0.016 264.4)';
 
 const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const safeImages = (images && images.length > 0) ? images.filter(url => typeof url === 'string' && url.startsWith('http')) : [];
+    const safeImages = (images && images.length > 0) 
+        ? images.filter(url => typeof url === 'string' && url.startsWith('http')) 
+        : [];
     const displayImages = safeImages.length > 0 ? safeImages : ['https://placehold.co/400x600?text=No+Photo'];
 
-    const goToPrevious = (e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : displayImages.length - 1)); };
-    const goToNext = (e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev < displayImages.length - 1 ? prev + 1 : 0)); };
+    const goToPrevious = (e) => {
+        e.stopPropagation();
+        setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : displayImages.length - 1));
+    };
+    const goToNext = (e) => {
+        e.stopPropagation();
+        setCurrentImageIndex((prev) => (prev < displayImages.length - 1 ? prev + 1 : 0));
+    };
     const handleImageClick = (e) => {
         e.stopPropagation();
         if (window.innerWidth >= 640) return;
         const rect = e.currentTarget.getBoundingClientRect();
-        if (e.clientX - rect.left < rect.width / 2) goToPrevious(e); else goToNext(e);
+        const x = e.clientX - rect.left;
+        const width = rect.width;
+        if (x < width / 2) goToPrevious(e);
+        else goToNext(e);
     };
 
     return (
@@ -60,6 +95,7 @@ const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) =>
 };
 
 const FullProfileView = ({ profile, onCollapse }) => {
+    // UPDATED BASICS DATA
     const basicsData = [
         { key: 'height', icon: Ruler, label: 'Height' },
         { key: 'exercise', icon: Dumbbell, label: 'Exercise' },
@@ -84,6 +120,7 @@ const FullProfileView = ({ profile, onCollapse }) => {
                 </div>
                 <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><p className="text-gray-900 text-base leading-relaxed">{profile.bio}</p></div>
                 {profile.prompts.map((prompt, index) => (<div key={index} className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><div className="text-sm font-bold uppercase tracking-wide mb-2.5" style={{ color: THEME_COLOR }}>{prompt.question}</div><p className="text-gray-900 text-base leading-relaxed">{prompt.answer}</p></div>))}
+                
                 <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3">
                     <h3 className="text-xl font-bold text-gray-900 mb-4">My basics</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -99,6 +136,7 @@ const FullProfileView = ({ profile, onCollapse }) => {
                         })}
                     </div>
                 </div>
+
                 <div className="bg-white px-4 sm:px-6 py-5 mb-2 sm:mb-3"><h3 className="text-xl font-bold text-gray-900 mb-4">My interests</h3><div className="flex flex-wrap gap-2.5">{profile.interests.map((interest) => (<span key={interest} className="inline-flex items-center rounded-full px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-semibold" style={{ backgroundColor: '#FFF5E6', color: '#CC8800', border: '1.5px solid #FFE0B2' }}>{interest}</span>))}</div></div>
             </div>
         </div>
@@ -122,6 +160,7 @@ const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
     };
 
     useImperativeHandle(ref, () => ({ swipe(direction) { if (dragOffset.x !== 0 || dragOffset.y !== 0) return; animateSwipe(direction); } }));
+
     const handleStart = (clientX, clientY) => { if (!isTop) return; setIsDragging(true); setStartPos({ x: clientX, y: clientY }); };
     const handleMove = (clientX, clientY) => { if (!isDragging || !isTop) return; const x = clientX - startPos.x; const y = clientY - startPos.y; setDragOffset({ x, y }); };
     const handleEnd = () => { if (!isDragging || !isTop) return; setIsDragging(false); const threshold = 100; if (Math.abs(dragOffset.x) > threshold) animateSwipe(dragOffset.x > 0 ? 'right' : 'left'); else if (dragOffset.y < -threshold) animateSwipe('up'); else setDragOffset({ x: 0, y: 0 }); };
@@ -148,15 +187,43 @@ const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
     );
 });
 
+// --- ActionButtons ---
 const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike }) => {
     return (
         <div className="w-full pt-6 pb-4 sm:pb-8 px-4">
             <div className="flex items-center justify-center gap-4 md:gap-6">
-                <button onClick={onRewind} className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 shadow-lg text-white border-2 border-yellow-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><Undo2 size={24} /></button>
-                <button onClick={onNope} className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full bg-red-500 shadow-lg text-white border-2 border-red-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><X size={32} strokeWidth={2.5} /></button>
-                <button onClick={onSuperLike} className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-blue-400 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><Star size={24} fill="white" /></button>
-                <button onClick={onLike} className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" style={{ backgroundColor: THEME_COLOR }}><Heart size={32} fill="white" /></button>
-                <button onClick={onLike} className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" style={{ backgroundColor: THEME_COLOR1 }}><MessageCircle size={24} fill="white" /></button>
+                <button 
+                    onClick={onRewind} 
+                    className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 shadow-lg text-white border-2 border-yellow-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
+                >
+                    <Undo2 size={24} />
+                </button>
+                <button 
+                    onClick={onNope} 
+                    className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full bg-red-500 shadow-lg text-white border-2 border-red-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
+                >
+                    <X size={32} strokeWidth={2.5} />
+                </button>
+                <button 
+                    onClick={onSuperLike} 
+                    className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-blue-400 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
+                >
+                    <Star size={24} fill="white" />
+                </button>
+                <button 
+                    onClick={onLike} 
+                    className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" 
+                    style={{ backgroundColor: THEME_COLOR }}
+                >
+                    <Heart size={32} fill="white" />
+                </button>
+                <button 
+                    onClick={onLike} 
+                    className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" 
+                    style={{ backgroundColor: THEME_COLOR1 }}
+                >
+                    <MessageCircle size={24} fill="white" />
+                </button>
             </div>
         </div>
     );
@@ -184,7 +251,7 @@ const Discover = () => {
     useEffect(() => {
         if (!currentUserId || !preference) return;
         
-        // PERFORMANCE FIX: Added limit(20) to prevent downloading the whole database
+        // ADDED LIMIT TO PREVENT CRASHING ON SLOW NETWORKS
         const q = query(
             collection(db, 'users'), 
             where('gender', '==', preference), 
@@ -280,7 +347,8 @@ const Discover = () => {
     };
 
     return (
-        <div className="mx-auto max-w-sm h-[calc(105vh-14rem)] sm:h-[calc(100vh-7rem)] flex flex-col mt-0 lg:mt-8 relative">
+        // FIXED HEIGHT FOR MOBILE: 100dvh - 9rem
+        <div className="mx-auto max-w-sm w-full h-[calc(100dvh-9rem)] flex flex-col mt-0 lg:mt-8 relative">
             <div className="flex-1 relative min-h-0">
                 <div className="absolute inset-0 p-4 sm:p-6">
                     {profiles.length > 0 ? (
