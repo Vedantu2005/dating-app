@@ -163,7 +163,6 @@ const ConfessionPage = () => {
     <>
       <style>{customStyles}</style>
 
-      {/* FIXED: 'p-4' for mobile (neat look), 'md:p-8' for laptop */}
       <div className="min-h-screen w-full bg-gradient-to-br from-[#E6E6FA] via-purple-200 to-purple-300 p-4 md:p-8">
         
         {/* Header */}
@@ -176,7 +175,7 @@ const ConfessionPage = () => {
           </p>
         </div>
 
-        {/* Post Confession Box */}
+        {/* Post Box */}
         <div className="w-full mb-6 md:mb-8 animate-[slideIn_0.5s_ease-out]">
           <div className="max-w-4xl mx-auto bg-white/98 backdrop-blur-sm rounded-3xl p-5 shadow-xl">
             <textarea
@@ -184,7 +183,7 @@ const ConfessionPage = () => {
               onChange={(e) => setNewConfession(e.target.value)}
               placeholder="What's on your mind?"
               disabled={!currentUser}
-              // ZOOM FIX: 'text-base' (16px) on mobile prevents auto-zoom, 'md:text-sm' on desktop
+              // Zoom fix preserved (text-base on mobile)
               className="w-full p-4 border-2 border-purple-300 rounded-2xl focus:border-purple-600 outline-none resize-none text-gray-700 text-base md:text-sm placeholder-gray-400"
               rows="3"
             />
@@ -200,9 +199,8 @@ const ConfessionPage = () => {
           </div>
         </div>
 
-        {/* Confessions Grid */}
-        <div className="w-full pb-20"> {/* pb-20 prevents bottom nav overlap on mobile */}
-          {/* FIXED: 'gap-4' on mobile, 'gap-6' on desktop */}
+        {/* List */}
+        <div className="w-full pb-20">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto">
             {confessions.map((confession, index) => (
               <div
@@ -210,7 +208,7 @@ const ConfessionPage = () => {
                 className="bg-white/98 backdrop-blur-sm rounded-3xl p-5 md:p-6 shadow-lg hover:shadow-2xl transition-all animate-[slideIn_0.5s_ease-out] flex flex-col group relative"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
-                {/* Author & Date */}
+                {/* Author Info */}
                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
                   <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
                     <User size={16} />
@@ -225,7 +223,7 @@ const ConfessionPage = () => {
                   </div>
                 </div>
 
-                {/* Edit/Delete Buttons */}
+                {/* Edit/Delete Actions */}
                 {currentUser && confession.userId === currentUser.uid && (
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -248,7 +246,7 @@ const ConfessionPage = () => {
                   </div>
                 )}
 
-                {/* Content */}
+                {/* Text Content */}
                 {editingId === confession.id ? (
                   <div className="mb-4">
                     <textarea
@@ -273,49 +271,42 @@ const ConfessionPage = () => {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-700 mb-5 leading-relaxed text-sm md:text-base flex-grow pr-8">
+                  <p className="text-gray-700 mb-5 leading-relaxed text-sm md:text-base flex-grow pr-8 break-words">
                     {confession.content}
                   </p>
                 )}
 
-                {/* Interaction Buttons */}
-                <div className="flex gap-3 pt-4 border-t border-gray-200 justify-start">
+                {/* LIKE & DISLIKE BUTTONS - SPLIT LEFT & RIGHT */}
+                {/* 'justify-between' pushes items to opposite edges */}
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+                  
+                  {/* LIKE (Left Side) */}
                   <button
-                    onClick={() =>
-                      toggleLike(
-                        confession.id,
-                        confession.liked,
-                        confession.disliked
-                      )
-                    }
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all font-semibold text-sm ${
+                    onClick={() => toggleLike(confession.id, confession.liked, confession.disliked)}
+                    className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl transition-all font-medium min-w-[80px] ${
                       confession.liked
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-gray-100 hover:bg-purple-100"
+                        ? "bg-purple-100 text-purple-700 ring-1 ring-purple-200"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
                     }`}
                   >
-                    <span className="text-lg">👍</span>
-                    <span className="font-bold">{confession.likes}</span>
+                    <span className="text-xl">👍</span>
+                    <span className="text-sm font-bold">{confession.likes || 0}</span>
                   </button>
 
+                  {/* DISLIKE (Right Side) */}
                   <button
-                    onClick={() =>
-                      toggleDislike(
-                        confession.id,
-                        confession.disliked,
-                        confession.liked
-                      )
-                    }
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all font-semibold text-sm ${
+                    onClick={() => toggleDislike(confession.id, confession.disliked, confession.liked)}
+                    className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl transition-all font-medium min-w-[80px] ${
                       confession.disliked
-                        ? "bg-red-100 text-red-700"
-                        : "bg-gray-100 hover:bg-red-100"
+                        ? "bg-red-100 text-red-700 ring-1 ring-red-200"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
                     }`}
                   >
-                    <span className="text-lg">👎</span>
-                    <span className="font-bold">{confession.dislikes}</span>
+                    <span className="text-xl">👎</span>
+                    <span className="text-sm font-bold">{confession.dislikes || 0}</span>
                   </button>
                 </div>
+
               </div>
             ))}
           </div>
