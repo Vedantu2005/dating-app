@@ -163,24 +163,28 @@ const ConfessionPage = () => {
     <>
       <style>{customStyles}</style>
 
-      <div className="min-h-screen w-full bg-gradient-to-br from-[#E6E6FA] via-purple-200 to-purple-300 p-8">
-        <div className="text-center mb-8 animate-[slideIn_0.6s_ease-out]">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent mb-2">
+      {/* FIXED: 'p-4' for mobile (neat look), 'md:p-8' for laptop */}
+      <div className="min-h-screen w-full bg-gradient-to-br from-[#E6E6FA] via-purple-200 to-purple-300 p-4 md:p-8">
+        
+        {/* Header */}
+        <div className="text-center mb-6 md:mb-8 animate-[slideIn_0.6s_ease-out]">
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent mb-2">
             Confessions
           </h1>
-          <p className="text-gray-600 text-base">
+          <p className="text-gray-600 text-sm md:text-base">
             Share your heart, find your people
           </p>
         </div>
 
-        <div className="w-full mb-8 animate-[slideIn_0.5s_ease-out]">
+        {/* Post Confession Box */}
+        <div className="w-full mb-6 md:mb-8 animate-[slideIn_0.5s_ease-out]">
           <div className="max-w-4xl mx-auto bg-white/98 backdrop-blur-sm rounded-3xl p-5 shadow-xl">
             <textarea
               value={newConfession}
               onChange={(e) => setNewConfession(e.target.value)}
               placeholder="What's on your mind?"
               disabled={!currentUser}
-              // FIX: 'text-base' for mobile (prevents zoom), 'md:text-sm' for laptop
+              // ZOOM FIX: 'text-base' (16px) on mobile prevents auto-zoom, 'md:text-sm' on desktop
               className="w-full p-4 border-2 border-purple-300 rounded-2xl focus:border-purple-600 outline-none resize-none text-gray-700 text-base md:text-sm placeholder-gray-400"
               rows="3"
             />
@@ -196,14 +200,17 @@ const ConfessionPage = () => {
           </div>
         </div>
 
-        <div className="w-full">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+        {/* Confessions Grid */}
+        <div className="w-full pb-20"> {/* pb-20 prevents bottom nav overlap on mobile */}
+          {/* FIXED: 'gap-4' on mobile, 'gap-6' on desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto">
             {confessions.map((confession, index) => (
               <div
                 key={confession.id}
-                className="bg-white/98 backdrop-blur-sm rounded-3xl p-6 shadow-lg hover:shadow-2xl transition-all animate-[slideIn_0.5s_ease-out] flex flex-col group relative"
+                className="bg-white/98 backdrop-blur-sm rounded-3xl p-5 md:p-6 shadow-lg hover:shadow-2xl transition-all animate-[slideIn_0.5s_ease-out] flex flex-col group relative"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
+                {/* Author & Date */}
                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
                   <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
                     <User size={16} />
@@ -218,6 +225,7 @@ const ConfessionPage = () => {
                   </div>
                 </div>
 
+                {/* Edit/Delete Buttons */}
                 {currentUser && confession.userId === currentUser.uid && (
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -240,6 +248,7 @@ const ConfessionPage = () => {
                   </div>
                 )}
 
+                {/* Content */}
                 {editingId === confession.id ? (
                   <div className="mb-4">
                     <textarea
@@ -264,11 +273,12 @@ const ConfessionPage = () => {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-700 mb-5 leading-relaxed text-base flex-grow pr-8">
+                  <p className="text-gray-700 mb-5 leading-relaxed text-sm md:text-base flex-grow pr-8">
                     {confession.content}
                   </p>
                 )}
 
+                {/* Interaction Buttons */}
                 <div className="flex gap-3 pt-4 border-t border-gray-200 justify-start">
                   <button
                     onClick={() =>
