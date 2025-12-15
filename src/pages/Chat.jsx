@@ -2,17 +2,16 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Send,
-  MessageSquare,
   Search,
   Heart,
   Image,
   Loader2,
   MoreVertical,
-  Sparkles // Imported for the Modal
+  Sparkles 
 } from "lucide-react";
 import { db, storage, realtimeDB } from "../firebaseConfig";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from 'react-router-dom'; // Imported for redirection
+import { useNavigate } from 'react-router-dom';
 import {
   collection,
   query,
@@ -24,8 +23,7 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc,
-  increment 
+  updateDoc
 } from "firebase/firestore";
 import {
   ref as storageRef,
@@ -34,9 +32,6 @@ import {
 } from "firebase/storage";
 import { ref as rtdbRef, onValue } from "firebase/database";
 
-// --- LIMIT CONFIG ---
-const FREE_MSG_LIMIT = 20;
-
 const customStyles = `
   .custom-scrollbar::-webkit-scrollbar { width: 5px; }
   .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -44,7 +39,7 @@ const customStyles = `
   .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
 `;
 
-// --- MODAL COMPONENT (Added for consistent UI) ---
+// --- MODAL COMPONENT ---
 const UpgradeModal = ({ isOpen, onClose, title, message }) => {
     const navigate = useNavigate();
     if (!isOpen) return null;
@@ -237,7 +232,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
   const [messages, setMessages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [userStatus, setUserStatus] = useState(null);
-  const [modalData, setModalData] = useState({ isOpen: false, title: "", message: "" }); // Modal State
+  const [modalData, setModalData] = useState({ isOpen: false, title: "", message: "" });
   const scrollRef = useRef(null);
   const chatId = getChatId(currentUserId, chat.id);
 
@@ -260,7 +255,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  // --- CHECK MSG LIMIT (UPDATED WITH MODAL) ---
+  // --- CHECK MSG LIMIT (STRICT FREE TIER BLOCK) ---
   const checkMessageLimit = async () => {
     try {
         const userRef = doc(db, "users", currentUserId);
@@ -268,31 +263,17 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         const userData = userSnap.data();
         const tier = userData?.subscriptionTier || 'Free';
 
-        // GOLD & PLATINUM have UNLIMITED CHATS
-        if (tier === 'gold' || tier === 'platinum') return true;
-
-        const today = new Date().toISOString().split('T')[0];
-        const usageRef = doc(db, "users", currentUserId, "usage", "daily");
-        const usageSnap = await getDoc(usageRef);
-        
-        let currentCount = 0;
-        if (usageSnap.exists() && usageSnap.data().date === today) {
-            currentCount = usageSnap.data().msg || 0;
-        } else {
-            await setDoc(usageRef, { date: today, msg: 0 }, { merge: true });
-        }
-
-        if (currentCount >= FREE_MSG_LIMIT) {
-            // TRIGGER THE MODAL INSTEAD OF ALERT
+        // 1. FREE USERS -> BLOCKED
+        if (tier === 'Free') {
             setModalData({
                 isOpen: true,
-                title: "Daily Limit Reached",
-                message: `Upgrade to Gold for Unlimited Chatting!`
+                title: "Chat Locked 🔒",
+                message: "Chatting is available only for Gold and Platinum members. Upgrade to connect!"
             });
             return false;
         }
 
-        await updateDoc(usageRef, { msg: increment(1), date: today });
+        // 2. GOLD & PLATINUM -> UNLIMITED
         return true;
 
     } catch (e) {
@@ -304,7 +285,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
   const handleSend = async () => {
     if (!messageText.trim()) return;
     
-    // Check limit before sending
+    // Check permission before sending
     const allowed = await checkMessageLimit();
     if (!allowed) return;
 
@@ -340,7 +321,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
   return (
     <div className="flex flex-col h-full bg-[#f3f4f6] relative">
       
-      {/* RENDER THE MODAL IF OPEN */}
+      {/* RENDER THE UPGRADE MODAL */}
       <UpgradeModal 
         isOpen={modalData.isOpen}
         onClose={() => setModalData({ ...modalData, isOpen: false })}
