@@ -72,8 +72,8 @@ export default function Navbar() {
             <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-white via-white to-purple-50 border-b border-purple-200 shadow-md" style={{ animation: 'slideDown 0.5s ease-out' }}>
                 <div className="max-w-7xl mx-auto px-6" >
                     <div className="flex items-center justify-between h-20">
-                        {/* Text Logo Restored */}
-                        <Link to="/discover" className="flex items-center gap-3 cursor-pointer group">
+                        {/* UPDATE: Link to Profile instead of Discover */}
+                        <Link to="/profile" className="flex items-center gap-3 cursor-pointer group">
                             <div>
                                 <h1 className="text-[32px] font-['Satisfy'] font-normal bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
                                     BSSS Dating
@@ -106,7 +106,6 @@ export default function Navbar() {
                         
                         {/* User Info & Logout */}
                         <div className="flex items-center gap-3">
-                            {/* FIRST NAME ONLY FIX */}
                             <span className="text-sm text-gray-600">
                                 {currentUser?.displayName 
                                     ? currentUser.displayName.split(' ')[0] 
@@ -127,7 +126,8 @@ export default function Navbar() {
             {/* Mobile Top Bar */}
             <nav className="md:hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-white via-white to-purple-50 border-b border-purple-200 shadow-md">
                 <div className="flex items-center justify-center h-16 px-4">
-                    <Link to="/discover" className="flex items-center gap-2">
+                    {/* UPDATE: Link to Profile */}
+                    <Link to="/profile" className="flex items-center gap-2">
                         <h1 className="text-[32px] font-['Satisfy'] font-normal bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent pb-1 pr-1">
                             BSSS Dating
                         </h1>

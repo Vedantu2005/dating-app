@@ -19,13 +19,15 @@ import {
   Code2,
   Share2, 
   MessageCircle,
-  Instagram // 1. IMPORT INSTAGRAM
+  Instagram,
+  ArrowLeft // Added ArrowLeft for back button
 } from 'lucide-react';
 
 // Firebase Imports
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+// FIX: Added setDoc to imports
+import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
@@ -143,15 +145,18 @@ const ProfileHeader = ({ userData, onNavigate, onSignOut, db }) => {
       const url = await getDownloadURL(storageRef);
 
       const newPhotos = [url, ...(profile.photos || [])];
+      
+      // FIX: Use setDoc with merge: true instead of updateDoc
+      // This creates the document if it doesn't exist
       const profileRef = doc(db, `artifacts/${appId}/users/${user.uid}/profile/data`);
-      await updateDoc(profileRef, { photos: newPhotos });
+      await setDoc(profileRef, { photos: newPhotos }, { merge: true });
 
       const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, { photos: newPhotos });
+      await setDoc(userRef, { photos: newPhotos }, { merge: true });
 
     } catch (error) {
       console.error("Error uploading profile photo:", error);
-      alert("Failed to upload photo.");
+      alert(`Failed to upload photo: ${error.message}`);
       setPreview(null); 
     } finally {
       setUploading(false);
@@ -281,8 +286,8 @@ const DoubleDateBanner = ({ user }) => {
   );
 };
 
-// --- ActionGrid ---
-const ActionGrid = () => (
+// --- ActionGrid (UPDATED WITH REDIRECTION) ---
+const ActionGrid = ({ onNavigate }) => (
   <div className="px-4 mt-8">
     <h3 className="text-lg font-bold text-gray-800 mb-3 px-1">Boost Your Profile</h3>
     <div className="grid grid-cols-2 gap-3">
@@ -291,22 +296,27 @@ const ActionGrid = () => (
         title="Super Likes"
         subtitle="Stand Out"
         subtitleColor="text-blue-500"
+        onClick={() => onNavigate('premium')}
       />
       <ActionCard
         icon={<Zap size={36} className="text-purple-600" fill="currentColor" />}
         title="Boosts"
         subtitle="Be Top Profile"
         subtitleColor="text-purple-600"
+        onClick={() => onNavigate('premium')}
       />
     </div>
   </div>
 );
 
-const ActionCard = ({ icon, title, subtitle, subtitleColor }) => (
-  <div className="relative flex flex-col items-center justify-center h-32 p-3 text-center bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
-    <button className="absolute top-2 cursor-pointer right-2 flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full">
+const ActionCard = ({ icon, title, subtitle, subtitleColor, onClick }) => (
+  <div 
+    onClick={onClick}
+    className="relative flex flex-col items-center justify-center h-32 p-3 text-center bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-95 duration-150"
+  >
+    <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full">
       <Plus size={14} className="text-gray-600" />
-    </button>
+    </div>
     <div className="mt-2">{icon}</div>
     <h3 className="mt-2 text-sm font-semibold text-gray-700">{title}</h3>
     {subtitle && (
@@ -344,7 +354,7 @@ const UpgradeCard = ({ data, freeFeatures, onUpgrade }) => {
           {data.type !== 'Free' && (
             <button 
               onClick={() => onUpgrade && onUpgrade(data)}
-              className={`px-8 py-2 cursor-pointer font-bold rounded-full shadow-md text-md ${data.btnColor} ${data.btnTextColor}`}
+              className={`px-8 py-2 cursor-pointer font-bold rounded-full shadow-md text-md ${data.btnColor} ${data.btnTextColor} hover:opacity-90 transition-opacity`}
             >
               Upgrade
             </button>
@@ -476,7 +486,7 @@ const AuthorSection = ({ onOpenPopup }) => (
   </div>
 );
 
-// --- AUTHOR POPUP (UPDATED) ---
+// --- AUTHOR POPUP ---
 const AuthorPopup = ({ onClose }) => (
   <div
     className="fixed inset-0 bg-black/10 bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
@@ -515,7 +525,6 @@ const AuthorPopup = ({ onClose }) => (
             </div>
           </div>
 
-          {/* 2. REPLACED PALETTE WITH INSTAGRAM (Clickable Link) */}
           <a 
             href="https://www.instagram.com/bsssdating?igsh=MW92bmpja2M3N2ZnOA%3D%3D&utm_source=qr" 
             target="_blank" 
@@ -554,9 +563,69 @@ const AuthorPopup = ({ onClose }) => (
   </div>
 );
 
-const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
+// --- PREMIUM VIEW (New Dedicated Page) ---
+const PremiumView = ({ onNavigate, onUpgrade }) => {
+  return (
+    <div className="flex flex-col bg-white relative min-h-full">
+      <div className="p-4 flex items-center border-b sticky top-0 bg-white z-10">
+        <button 
+          onClick={() => onNavigate('profile')} 
+          className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <ArrowLeft size={24} className="text-gray-800" />
+        </button>
+        <h1 className="ml-2 text-xl font-bold text-gray-800">Get Premium</h1>
+      </div>
+
+      <div className="flex-1 pb-8">
+        <div className="p-6 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-full mb-4 shadow-lg">
+             <Star size={40} className="text-white fill-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Unlock All Features</h2>
+          <p className="text-gray-500 mb-6">Get unlimited likes, see who likes you, and boost your profile visibility.</p>
+        </div>
+        
+        {/* Reusing existing UpgradeCarousel */}
+        <UpgradeCarousel onUpgrade={onUpgrade} />
+      </div>
+    </div>
+  );
+};
+
+const ProfileScreen = ({ onNavigate, userData, onSignOut, db, onUpgrade }) => {
   const [showAuthorPopup, setShowAuthorPopup] = useState(false);
 
+  return (
+    <div className="flex flex-col pb-4">
+      <ProfileHeader userData={userData} onNavigate={onNavigate} onSignOut={onSignOut} db={db} />
+
+      <DoubleDateBanner user={userData?.profile || userData?.auth} />
+
+      {/* Passed onNavigate here to handle click events */}
+      <ActionGrid onNavigate={onNavigate} /> 
+
+      <UpgradeCarousel onUpgrade={onUpgrade} />
+
+      <AuthorSection onOpenPopup={() => setShowAuthorPopup(true)} />
+
+      {showAuthorPopup && <AuthorPopup onClose={() => setShowAuthorPopup(false)} />}
+    </div>
+  );
+};
+
+// --- MAIN APP COMPONENT ---
+
+export default function Profile() {
+  const [authInstance, setAuthInstance] = useState(null);
+  const [dbInstance, setDbInstance] = useState(null);
+  const [user, setUser] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState(null);
+  const [currentView, setCurrentView] = useState('profile');
+
+  // Move handleUpgrade here so it can be used by both ProfileScreen and PremiumView
   const handleUpgrade = async (plan) => {
     const prices = {
       'gold': 199,
@@ -600,9 +669,9 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
                   console.error("Verification warning:", verifyErr);
                 }
 
-                if (userData?.auth?.uid && db) {
+                if (user?.uid && dbInstance) {
                   try {
-                    const userRef = doc(db, "users", userData.auth.uid);
+                    const userRef = doc(dbInstance, "users", user.uid);
                     await updateDoc(userRef, {
                       subscriptionTier: plan.type,
                       subscriptionDate: new Date().toISOString(),
@@ -617,7 +686,7 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
             },
             prefill: {
                 name: userData?.profile?.name || "",
-                email: userData?.auth?.email || "",
+                email: user?.email || "",
                 contact: "" 
             },
             theme: {
@@ -633,34 +702,6 @@ const ProfileScreen = ({ onNavigate, userData, onSignOut, db }) => {
         alert(`Something went wrong: ${error.message}`);
     }
   };
-
-  return (
-    <div className="flex flex-col pb-4">
-      <ProfileHeader userData={userData} onNavigate={onNavigate} onSignOut={onSignOut} db={db} />
-
-      <DoubleDateBanner user={userData?.profile || userData?.auth} />
-
-      <ActionGrid />
-
-      <UpgradeCarousel onUpgrade={handleUpgrade} />
-
-      <AuthorSection onOpenPopup={() => setShowAuthorPopup(true)} />
-
-      {showAuthorPopup && <AuthorPopup onClose={() => setShowAuthorPopup(false)} />}
-    </div>
-  );
-};
-
-// --- MAIN APP COMPONENT ---
-
-export default function Profile() {
-  const [authInstance, setAuthInstance] = useState(null);
-  const [dbInstance, setDbInstance] = useState(null);
-  const [user, setUser] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
-  const [currentView, setCurrentView] = useState('profile');
 
   useEffect(() => {
     const firebaseConfig = getFirebaseConfig();
@@ -767,7 +808,15 @@ export default function Profile() {
 
     switch (currentView) {
       case 'profile':
-        return <ProfileScreen onNavigate={navigate} userData={userData} onSignOut={handleSignOut} db={dbInstance} />;
+        return (
+          <ProfileScreen 
+            onNavigate={navigate} 
+            userData={userData} 
+            onSignOut={handleSignOut} 
+            db={dbInstance}
+            onUpgrade={handleUpgrade} 
+          />
+        );
       case 'edit':
         return (
           <EditProfile
@@ -779,14 +828,32 @@ export default function Profile() {
             storage={sharedStorage}
           />
         );
+      case 'premium': // NEW CASE: Premium View
+        return (
+          <PremiumView 
+            onNavigate={navigate}
+            onUpgrade={handleUpgrade}
+          />
+        );
       default:
-        return <ProfileScreen onNavigate={navigate} userData={userData} onSignOut={handleSignOut} db={dbInstance} />;
+        return (
+          <ProfileScreen 
+            onNavigate={navigate} 
+            userData={userData} 
+            onSignOut={handleSignOut} 
+            db={dbInstance}
+            onUpgrade={handleUpgrade}
+          />
+        );
     }
   };
 
   return (
-    <div className=" flex justify-center min-h-screen p-4 bg-gray-300 font-inter">
-      <div className=" w-full max-w-sm overflow-hidden bg-gray-100 rounded-2xl shadow-xl overflow-y-auto sm:max-w-[95%]">
+    <div className="flex justify-center min-h-screen p-4 bg-gray-300 font-inter">
+      {/* UPDATED: Removed 'h-[800px]' and 'overflow-y-auto' 
+         This removes the forced inner scrollbar and allows natural page scrolling.
+      */}
+      <div className="w-full max-w-sm bg-gray-100 rounded-2xl shadow-xl sm:max-w-[95%]">
         {renderView()}
       </div>
     </div>

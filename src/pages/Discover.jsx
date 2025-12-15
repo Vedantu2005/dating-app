@@ -1,10 +1,10 @@
 import React, { useState, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
 import { Ruler, Dumbbell, Cigarette, Wine, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { 
     collection, 
     onSnapshot, 
     query, 
-    where, 
     doc, 
     orderBy, 
     setDoc, 
@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 
-// --- CUSTOM SVG ICONS (Exact as provided) ---
+// --- CUSTOM SVG ICONS ---
 const X = ({ size = 24, strokeWidth = 2, className = '' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18M6 6l12 12" /></svg>
 );
@@ -60,8 +60,43 @@ const ChevronRight = ({ size = 24, className = '' }) => (
 const THEME_COLOR = 'oklch(49.6% 0.265 301.924)';
 const THEME_COLOR1 = 'oklch(19.2% 0.016 264.4)';
 
-// --- LIMITS CONFIGURATION ---
-const FREE_LIKES_LIMIT = 5;
+// --- CONFIGURATION ---
+const FREE_SWIPES_LIMIT = 5;
+const FREE_SUPERLIKE_LIMIT = 2;
+
+// --- MODAL COMPONENT (Replaces Window.Confirm for smoothness) ---
+const UpgradeModal = ({ isOpen, onClose, title, message }) => {
+    const navigate = useNavigate();
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+            <div className="bg-white rounded-2xl p-6 w-[90%] max-w-sm shadow-2xl transform transition-all scale-100">
+                <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 mb-4">
+                        <Sparkles className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                    <p className="text-sm text-gray-500 mt-2">{message}</p>
+                </div>
+                <div className="mt-6 flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => navigate('/profile')}
+                        className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                    >
+                        Upgrade
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // --- Image Gallery ---
 const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) => {
@@ -198,57 +233,33 @@ const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
     );
 });
 
-// --- ActionButtons (UI EXACT as provided) ---
+// --- ActionButtons ---
 const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike, onChat }) => {
     return (
         <div className="w-full pt-6 pb-4 sm:pb-8 px-4">
             <div className="flex items-center justify-center gap-4 md:gap-6">
-                <button 
-                    onClick={onRewind} 
-                    className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 shadow-lg text-white border-2 border-yellow-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
-                >
-                    <Undo2 size={24} />
-                </button>
-                <button 
-                    onClick={onNope} 
-                    className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full bg-red-500 shadow-lg text-white border-2 border-red-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
-                >
-                    <X size={32} strokeWidth={2.5} />
-                </button>
-                <button 
-                    onClick={onSuperLike} 
-                    className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-blue-400 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
-                >
-                    <Star size={24} fill="white" />
-                </button>
-                <button 
-                    onClick={onLike} 
-                    className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" 
-                    style={{ backgroundColor: THEME_COLOR }}
-                >
-                    <Heart size={32} fill="white" />
-                </button>
-                <button 
-                    onClick={onChat} 
-                    className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" 
-                    style={{ backgroundColor: THEME_COLOR1 }}
-                >
-                    <MessageCircle size={24} fill="white" />
-                </button>
+                <button onClick={onRewind} className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 shadow-lg text-white border-2 border-yellow-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><Undo2 size={24} /></button>
+                <button onClick={onNope} className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full bg-red-500 shadow-lg text-white border-2 border-red-500 hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><X size={32} strokeWidth={2.5} /></button>
+                <button onClick={onSuperLike} className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full bg-blue-400 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"><Star size={24} fill="white" /></button>
+                <button onClick={onLike} className="flex-shrink-0 aspect-square flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" style={{ backgroundColor: THEME_COLOR }}><Heart size={32} fill="white" /></button>
+                <button onClick={onChat} className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" style={{ backgroundColor: THEME_COLOR1 }}><MessageCircle size={24} fill="white" /></button>
             </div>
         </div>
     );
 };
 
 const Discover = () => {
+    const navigate = useNavigate(); 
     const [profiles, setProfiles] = useState([]);
     const [history, setHistory] = useState([]); 
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandedProfile, setExpandedProfile] = useState(null);
     const [currentUserData, setCurrentUserData] = useState(null);
+    // 1. INSTANT STATE for limits (No lagging wait time)
+    const [usageStats, setUsageStats] = useState({ swipes: 0, superlikes: 0 });
+    const [modalData, setModalData] = useState({ isOpen: false, title: "", message: "" });
     const topCardRef = useRef();
     const currentUserId = auth.currentUser?.uid;
-    const preference = currentUserData?.gender === 'male' ? 'female' : 'male';
 
     useEffect(() => {
         if (!currentUserId) return;
@@ -259,31 +270,56 @@ const Discover = () => {
         return () => unsub();
     }, [currentUserId]);
 
+    // 2. REAL-TIME LISTENER for Usage Stats (Updates instantly in background)
     useEffect(() => {
-        if (!currentUserId || !preference) return;
+        if (!currentUserId) return;
+        const today = new Date().toISOString().split('T')[0];
+        const usageRef = doc(db, "users", currentUserId, "usage", "daily");
+
+        const unsubUsage = onSnapshot(usageRef, (docSnap) => {
+            if (docSnap.exists() && docSnap.data().date === today) {
+                setUsageStats({
+                    swipes: docSnap.data().swipes || 0,
+                    superlikes: docSnap.data().superlikes || 0
+                });
+            } else {
+                // If date changed or no doc, reset stats locally
+                setUsageStats({ swipes: 0, superlikes: 0 });
+                // We don't write to DB here to avoid loops, purely reading
+            }
+        });
+        return () => unsubUsage();
+    }, [currentUserId]);
+
+    // --- FETCH PROFILES LOGIC ---
+    useEffect(() => {
+        if (!currentUserId) return;
         
         const q = query(
             collection(db, 'users'), 
-            where('gender', '==', preference), 
             orderBy("displayName", "asc"),
-            limit(20) 
+            limit(500) 
         );
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedProfiles = snapshot.docs
-                .filter(doc => doc.id !== currentUserId)
+                .filter(doc => doc.id !== currentUserId) 
                 .map(doc => {
                     const data = doc.data();
+                    if (!data.displayName || data.displayName.trim() === '') return null;
                     let validImages = [];
                     if (Array.isArray(data.photos) && data.photos.length > 0) {
                         validImages = data.photos.filter(url => typeof url === 'string' && url.startsWith('http'));
                     } else if (typeof data.avatarUrl === 'string' && data.avatarUrl.startsWith('http')) {
                         validImages = [data.avatarUrl];
                     }
+                    if (validImages.length === 0) return null;
+                    const displayAge = data.age ? data.age : "";
+
                     return {
                         id: doc.id,
-                        name: data.displayName || 'User',
-                        age: data.age || 21,
+                        name: data.displayName,
+                        age: displayAge,
                         images: validImages,
                         job: data.jobTitle || 'Undisclosed',
                         company: data.company || '',
@@ -300,127 +336,154 @@ const Discover = () => {
                         interests: data.interests || [],
                         badges: ['Verified'],
                     };
-                });
+                })
+                .filter(profile => profile !== null);
+
             setProfiles(fetchedProfiles);
         });
         return () => unsubscribe();
-    }, [currentUserId, preference]);
+    }, [currentUserId]); 
 
-    // --- USAGE CHECK LOGIC (UPDATED WITH MESSAGE CHECK) ---
-    const checkAndIncrementUsage = async (actionType) => {
-        if (!currentUserId) return false;
+    // --- NON-BLOCKING CHECK ---
+    const checkUsageInstant = (actionType) => {
         const subscriptionTier = currentUserData?.subscriptionTier || 'Free';
-        
-        // Tier checks
-        if (subscriptionTier === 'platinum') return true; 
-        if (subscriptionTier === 'gold' && actionType === 'like') return true; 
-        // Allow message for gold? Assuming free limit for now unless specified.
-        
-        if (subscriptionTier === 'Free' && (actionType === 'rewind' || actionType === 'superlike')) {
-            alert(`Upgrade to use ${actionType}!`);
-            return false;
+
+        // 1. PLATINUM (Unlimited Everything)
+        if (subscriptionTier === 'platinum') return true;
+
+        // 2. GOLD (Unlimited Likes/Chat, Limited Rewind)
+        if (subscriptionTier === 'gold') {
+            if (actionType === 'rewind') {
+                setModalData({ isOpen: true, title: "Upgrade to Platinum", message: "Rewind is exclusive to Platinum members!" });
+                return false;
+            }
+            if (actionType === 'superlike') {
+                 if (usageStats.superlikes >= FREE_SUPERLIKE_LIMIT) {
+                    setModalData({ isOpen: true, title: "Out of Super Likes", message: "Get Platinum for unlimited Super Likes!" });
+                    return false;
+                }
+            }
+            return true; // Likes/Chat are unlimited
         }
 
+        // 3. FREE TIER
+        if (subscriptionTier === 'Free') {
+            // Locked Features
+            if (actionType === 'rewind') {
+                setModalData({ isOpen: true, title: "Rewind is Premium", message: "Upgrade to undo your last swipe." });
+                return false;
+            }
+            if (actionType === 'message') {
+                setModalData({ isOpen: true, title: "Chat Locked", message: "Upgrade to Gold to message instantly." });
+                return false;
+            }
+
+            // Limited Features
+            if (actionType === 'like' || actionType === 'nope') {
+                if (usageStats.swipes >= FREE_SWIPES_LIMIT) {
+                    setModalData({ isOpen: true, title: "Daily Limit Reached", message: `You've used your ${FREE_SWIPES_LIMIT} daily swipes. Upgrade to Gold for Unlimited!` });
+                    return false;
+                }
+            }
+            if (actionType === 'superlike') {
+                if (usageStats.superlikes >= FREE_SUPERLIKE_LIMIT) {
+                    setModalData({ isOpen: true, title: "Daily Super Likes Reached", message: `You've used your ${FREE_SUPERLIKE_LIMIT} Super Likes. Upgrade for more!` });
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+
+    // --- BACKGROUND UPDATE (Fire & Forget) ---
+    const updateUsageBackground = async (actionType) => {
         const today = new Date().toISOString().split('T')[0];
         const usageRef = doc(db, "users", currentUserId, "usage", "daily");
         
         try {
-            const usageSnap = await getDoc(usageRef);
-            let currentCount = 0;
-            if (usageSnap.exists()) {
-                const data = usageSnap.data();
-                if (data.date === today) currentCount = data[actionType] || 0;
-                else await setDoc(usageRef, { date: today, like: 0, superlike: 0, message: 0 });
-            } else {
-                await setDoc(usageRef, { date: today, like: 0, superlike: 0, message: 0 });
-            }
+            // Ensure document exists
+            await setDoc(usageRef, { date: today }, { merge: true });
 
-            // --- LIMIT CHECKS ---
-            if (subscriptionTier === 'Free') {
-                if (actionType === 'like' && currentCount >= FREE_LIKES_LIMIT) {
-                    alert("Daily like limit reached!");
-                    return false;
-                }
-                // ADDED: Check for message/chat limit
-                if (actionType === 'message' && currentCount >= FREE_LIKES_LIMIT) {
-                    alert("Daily boost/message limit reached!");
-                    return false;
-                }
-            }
-
-            await updateDoc(usageRef, { [actionType]: increment(1), date: today });
-            return true;
+            const updates = { date: today };
+            if (actionType === 'like' || actionType === 'nope') updates.swipes = increment(1);
+            if (actionType === 'superlike') updates.superlikes = increment(1);
+            
+            await updateDoc(usageRef, updates);
         } catch (error) {
-            console.error("Usage error:", error);
-            return true; 
+            console.error("Background update error:", error);
         }
     };
 
-    const handleSwipe = async (direction) => {
+    const handleSwipe = (direction) => {
         if (!currentUserId || profiles.length === 0) return;
 
-        // Permissions Check
-        if (direction === 'right') {
-            const allowed = await checkAndIncrementUsage('like');
-            if (!allowed) { window.location.reload(); return; }
-        } else if (direction === 'up') {
-             const allowed = await checkAndIncrementUsage('superlike');
-             if (!allowed) { window.location.reload(); return; }
-        }
+        let actionType = 'like';
+        if (direction === 'left') actionType = 'nope';
+        if (direction === 'up') actionType = 'superlike';
 
+        // 1. INSTANT CHECK (No lag)
+        if (!checkUsageInstant(actionType)) return;
+
+        // 2. UPDATE UI INSTANTLY
         const swipedUser = profiles[profiles.length - 1];
         const swipedUserId = swipedUser.id;
 
-        // Optimistic UI update
+        // Optimistically update local stats to prevent rapid-fire clicking bypass
+        if (actionType === 'like' || actionType === 'nope') {
+            setUsageStats(prev => ({ ...prev, swipes: prev.swipes + 1 }));
+        } else if (actionType === 'superlike') {
+            setUsageStats(prev => ({ ...prev, superlikes: prev.superlikes + 1 }));
+        }
+
         setTimeout(() => {
             setHistory((prev) => [...prev, swipedUser]); 
             setProfiles((prev) => prev.slice(0, -1));    
-        }, 300);
+        }, 200);
+
+        // 3. BACKGROUND UPDATES (DB)
+        updateUsageBackground(actionType);
 
         if (direction === 'right' || direction === 'up') {
-            try {
-                await setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
-                    liked: true,
-                    super: direction === 'up',
-                    timestamp: serverTimestamp()
-                });
+            // Fire and forget match creation
+            setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
+                liked: true,
+                super: direction === 'up',
+                timestamp: serverTimestamp()
+            });
 
-                const chatId = [currentUserId, swipedUserId].sort().join("_");
-                await setDoc(doc(db, "matches", chatId), {
-                    users: [currentUserId, swipedUserId],
-                    usersIncluded: { [currentUserId]: true, [swipedUserId]: true },
-                    timestamp: serverTimestamp(),
-                    lastMessage: "You matched! Say hi 👋"
-                });
-            } catch (error) {
-                console.error("Error processing swipe:", error);
-            }
+            const chatId = [currentUserId, swipedUserId].sort().join("_");
+            setDoc(doc(db, "matches", chatId), {
+                users: [currentUserId, swipedUserId],
+                usersIncluded: { [currentUserId]: true, [swipedUserId]: true },
+                timestamp: serverTimestamp(),
+                lastMessage: "You matched! Say hi 👋"
+            });
         }
     };
 
-    const handleRewind = async () => {
-        const allowed = await checkAndIncrementUsage('rewind');
-        if (!allowed) return;
-
+    const handleRewind = () => {
+        if (!checkUsageInstant('rewind')) return;
         if (history.length === 0) return;
+        
         const lastSwipedUser = history[history.length - 1];
         setHistory((prev) => prev.slice(0, -1));
         setProfiles((prev) => [...prev, lastSwipedUser]);
     };
 
-    // --- UPDATED HANDLE CHAT ---
-    const handleChat = async () => {
-        // Now checks for 'message' action limits
-        const allowed = await checkAndIncrementUsage('message');
-        if (!allowed) return;
-
-        console.log("Direct message/Boost clicked");
-        // Your logic for the 5th button (e.g., instant match, boost, or open chat)
-        alert("Boost activated!"); 
+    const handleChat = () => {
+        if (!checkUsageInstant('message')) return;
+        navigate('/chat');
     };
 
     const triggerSwipe = (direction) => {
-        if (topCardRef.current) topCardRef.current.swipe(direction);
+        // Pre-check before animation trigger
+        let actionType = 'like';
+        if (direction === 'left') actionType = 'nope';
+        if (direction === 'up') actionType = 'superlike';
+        
+        if (checkUsageInstant(actionType)) {
+            if (topCardRef.current) topCardRef.current.swipe(direction);
+        }
     };
 
     const handleExpand = (profile) => {
@@ -430,6 +493,13 @@ const Discover = () => {
 
     return (
         <div className="mx-auto max-w-sm w-full h-[calc(100dvh-9rem)] flex flex-col mt-0 lg:mt-8 relative">
+            <UpgradeModal 
+                isOpen={modalData.isOpen} 
+                onClose={() => setModalData({ ...modalData, isOpen: false })} 
+                title={modalData.title} 
+                message={modalData.message} 
+            />
+
             <div className="flex-1 relative min-h-0">
                 <div className="absolute inset-0 p-4 sm:p-6">
                     {profiles.length > 0 ? (
@@ -439,7 +509,7 @@ const Discover = () => {
                                 ref={index === profiles.length - 1 ? topCardRef : null}
                                 profile={profile}
                                 onExpand={() => handleExpand(profile)}
-                                onSwipe={handleSwipe}
+                                onSwipe={handleSwipe} // This calls handleSwipe when card physically leaves screen
                                 isTop={index === profiles.length - 1}
                             />
                         ))

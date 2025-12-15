@@ -7,10 +7,12 @@ import {
   Heart,
   Image,
   Loader2,
-  MoreVertical
+  MoreVertical,
+  Sparkles // Imported for the Modal
 } from "lucide-react";
 import { db, storage, realtimeDB } from "../firebaseConfig";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from 'react-router-dom'; // Imported for redirection
 import {
   collection,
   query,
@@ -41,6 +43,40 @@ const customStyles = `
   .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
 `;
+
+// --- MODAL COMPONENT (Added for consistent UI) ---
+const UpgradeModal = ({ isOpen, onClose, title, message }) => {
+    const navigate = useNavigate();
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+            <div className="bg-white rounded-2xl p-6 w-[90%] max-w-sm shadow-2xl transform transition-all scale-100">
+                <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 mb-4">
+                        <Sparkles className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                    <p className="text-sm text-gray-500 mt-2">{message}</p>
+                </div>
+                <div className="mt-6 flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => navigate('/profile')}
+                        className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                    >
+                        Upgrade
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const getChatId = (userAId, userBId) => {
   return userAId < userBId ? `${userAId}_${userBId}` : `${userBId}_${userAId}`;
@@ -102,26 +138,20 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
                     avatarUrl: (userData.photos && userData.photos[0]) || userData.avatarUrl || "https://placehold.co/100",
                     lastMessage: data.lastMessage || "Start chatting...",
                     isFavorite: data.favorites?.[currentUserId] === true,
-                    timestamp: data.timestamp // 1. Grab the timestamp
+                    timestamp: data.timestamp
                 };
             } catch (e) { return null; }
         });
 
         const results = await Promise.all(promises);
         
-        // 2. Updated Sorting Logic
         const validUsers = results.filter(Boolean).sort((a, b) => {
-            // First Priority: Favorites at the top
             if (a.isFavorite !== b.isFavorite) {
                 return a.isFavorite ? -1 : 1;
             }
-            
-            // Second Priority: Timestamp (Newest messages first)
-            // Using .seconds if Firestore Timestamp, defaulting to 0 if missing
             const timeA = a.timestamp?.seconds || 0;
             const timeB = b.timestamp?.seconds || 0;
-            
-            return timeB - timeA; // Descending order
+            return timeB - timeA; 
         });
         
         setUsers(validUsers);
@@ -207,6 +237,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
   const [messages, setMessages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [userStatus, setUserStatus] = useState(null);
+  const [modalData, setModalData] = useState({ isOpen: false, title: "", message: "" }); // Modal State
   const scrollRef = useRef(null);
   const chatId = getChatId(currentUserId, chat.id);
 
@@ -229,7 +260,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  // --- CHECK MSG LIMIT ---
+  // --- CHECK MSG LIMIT (UPDATED WITH MODAL) ---
   const checkMessageLimit = async () => {
     try {
         const userRef = doc(db, "users", currentUserId);
@@ -237,6 +268,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         const userData = userSnap.data();
         const tier = userData?.subscriptionTier || 'Free';
 
+        // GOLD & PLATINUM have UNLIMITED CHATS
         if (tier === 'gold' || tier === 'platinum') return true;
 
         const today = new Date().toISOString().split('T')[0];
@@ -251,7 +283,12 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         }
 
         if (currentCount >= FREE_MSG_LIMIT) {
-            alert("Daily message limit reached! Upgrade to Gold for unlimited chatting.");
+            // TRIGGER THE MODAL INSTEAD OF ALERT
+            setModalData({
+                isOpen: true,
+                title: "Daily Limit Reached",
+                message: `Upgrade to Gold for Unlimited Chatting!`
+            });
             return false;
         }
 
@@ -277,7 +314,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
       await addDoc(collection(db, "chats", chatId, "messages"), {
         senderId: currentUserId, recipientId: chat.id, text, type: "text", createdAt: serverTimestamp(),
       });
-      // This updates the 'timestamp' in the matches document, which ChatList uses to sort.
       await setDoc(doc(db, "matches", chatId), { lastMessage: text, timestamp: serverTimestamp() }, { merge: true });
     } catch (e) { console.error(e); }
   };
@@ -294,7 +330,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
        await addDoc(collection(db, "chats", chatId, "messages"), {
          senderId: currentUserId, recipientId: chat.id, content: url, type: "image", createdAt: serverTimestamp(),
        });
-       // Also update timestamp for images
        await setDoc(doc(db, "matches", chatId), { lastMessage: "Sent an image", timestamp: serverTimestamp() }, { merge: true });
        setUploading(false);
     });
@@ -303,7 +338,17 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
   const isOnline = userStatus?.state === "online";
 
   return (
-    <div className="flex flex-col h-full bg-[#f3f4f6]">
+    <div className="flex flex-col h-full bg-[#f3f4f6] relative">
+      
+      {/* RENDER THE MODAL IF OPEN */}
+      <UpgradeModal 
+        isOpen={modalData.isOpen}
+        onClose={() => setModalData({ ...modalData, isOpen: false })}
+        title={modalData.title}
+        message={modalData.message}
+      />
+
+      {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 shadow-sm z-10 h-[72px]">
         <div className="flex items-center gap-3">
             <button onClick={onBack} className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full">
@@ -323,6 +368,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         </button>
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar" ref={scrollRef}>
         {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.isMe ? "justify-end" : "justify-start"}`}>
@@ -346,6 +392,7 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
         ))}
       </div>
 
+      {/* Input */}
       <div className="flex-shrink-0 p-3 bg-white border-t border-gray-200">
         <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full pl-4 border border-transparent focus-within:border-purple-300 focus-within:bg-white focus-within:shadow-sm transition-all">
           <label className="p-2 text-gray-400 hover:text-purple-600 cursor-pointer transition-colors">

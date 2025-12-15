@@ -1,16 +1,11 @@
-import React, { Suspense } from 'react'; // Added Suspense
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-
-// Auth Context
 import { AuthProvider, useAuth } from './context/AuthContext';
-
-// Components
 import Navbar from './components/Navbar';
 import Loading from './components/Loading'; 
 import { usePresence } from './usePresence';
 
-// --- LAZY LOAD PAGES (Performance Optimization) ---
-// Instead of importing directly, we load them only when needed
+// --- LAZY LOAD PAGES ---
 const AuthPage = React.lazy(() => import('./components/Auth'));
 const ForgotPasswordPage = React.lazy(() => import('./components/ForgotPassword'));
 const DiscoverPage = React.lazy(() => import('./pages/Discover'));
@@ -18,7 +13,7 @@ const ConfessionsPage = React.lazy(() => import('./pages/Confession'));
 const ChatPage = React.lazy(() => import('./pages/Chat'));
 const ProfilePage = React.lazy(() => import('./pages/Profile'));
 
-// Protected Route Component
+// Protected Route Wrapper
 const ProtectedRoute = ({ children }) => {
     const { currentUser, loading } = useAuth(); 
 
@@ -28,20 +23,53 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 
-// Main Layout
-const AppLayout = () => {
+// --- Child Component for Routes (Accesses Context) ---
+const AppRoutes = () => {
+    const { currentUser } = useAuth();
+    usePresence(); // Keep presence tracking active
+
     return (
         <div className="min-h-screen bg-[#E6E6FA] text-[#3730A3]">
-            <Navbar /> 
-            <main className="pt-16 pb-20 md:pb-0 md:pt-20 transition-all duration-300 min-h-[calc(100vh-140px)]"> 
-                {/* Suspense shows the Loading component while the page code is downloading */}
+            {/* Show Navbar only if logged in */}
+            {currentUser && <Navbar />} 
+            
+            <main className={currentUser ? "pt-16 pb-20 md:pb-0 md:pt-20 transition-all duration-300 min-h-[calc(100vh-140px)]" : ""}> 
                 <Suspense fallback={<Loading />}>
                     <Routes>
-                        <Route path="/discover" element={<DiscoverPage />} />
-                        <Route path="/confessions" element={<ConfessionsPage />} />
-                        <Route path="/chat" element={<ChatPage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
-                        <Route path="*" element={<Navigate to="/discover" replace />} />
+                        {/* Public Routes */}
+                        <Route 
+                            path="/" 
+                            element={!currentUser ? <AuthPage /> : <Navigate to="/profile" replace />} 
+                        />
+                        <Route 
+                            path="/login" 
+                            element={!currentUser ? <AuthPage /> : <Navigate to="/profile" replace />} 
+                        />
+                        <Route 
+                            path="/forgot-password" 
+                            element={<ForgotPasswordPage />} 
+                        />
+
+                        {/* Protected Routes */}
+                        <Route 
+                            path="/profile" 
+                            element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} 
+                        />
+                        <Route 
+                            path="/discover" 
+                            element={<ProtectedRoute><DiscoverPage /></ProtectedRoute>} 
+                        />
+                        <Route 
+                            path="/confessions" 
+                            element={<ProtectedRoute><ConfessionsPage /></ProtectedRoute>} 
+                        />
+                        <Route 
+                            path="/chat" 
+                            element={<ProtectedRoute><ChatPage /></ProtectedRoute>} 
+                        />
+
+                        {/* Catch-all */}
+                        <Route path="*" element={<Navigate to={currentUser ? "/profile" : "/"} replace />} />
                     </Routes>
                 </Suspense>
             </main>
@@ -49,52 +77,13 @@ const AppLayout = () => {
     );
 };
 
+// --- Main App Component (Wraps Everything) ---
 export default function App() {
-    usePresence();
-    
     return (
         <BrowserRouter>
             <AuthProvider>
-                <AppContent />
+                <AppRoutes />
             </AuthProvider>
         </BrowserRouter>
     );
-}
-
-const AppContent = () => {
-    const { currentUser, loading } = useAuth();
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-[#E6E6FA] flex items-center justify-center">
-                <Loading />
-            </div>
-        );
-    }
-
-    return (
-        // Wrap public routes in Suspense as well
-        <Suspense fallback={<Loading />}>
-            <Routes>
-                <Route
-                    path="/"
-                    element={currentUser ? <Navigate to="/discover" replace /> : <AuthPage />}
-                />
-                
-                <Route
-                    path="/forgot-password"
-                    element={<ForgotPasswordPage />}
-                />
-
-                <Route
-                    path="/*"
-                    element={
-                        <ProtectedRoute>
-                            <AppLayout />
-                        </ProtectedRoute>
-                    }
-                />
-            </Routes>
-        </Suspense>
-    );
-}
+}  
