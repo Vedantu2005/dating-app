@@ -370,7 +370,7 @@ const Discover = () => {
             }
             if (actionType === 'like' || actionType === 'nope') {
                 if (usageStats.swipes >= FREE_SWIPES_LIMIT) {
-                    setModalData({ isOpen: true, title: "Daily Limit Reached", message: `You've used your ${FREE_SWIPES_LIMIT} daily swipes. Upgrade to Gold for Unlimited!` });
+                    setModalData({ isOpen: true, title: "Daily Limit Reached", message: `You've used your ${FREE_SWIPES_LIMIT} daily swipes. Upgrade to Subscription for Unlimited!` });
                     return false;
                 }
             }
