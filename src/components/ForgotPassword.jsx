@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Mail, ArrowLeft, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../firebaseConfig'; 
+// REMOVE: import { sendPasswordResetEmail } from 'firebase/auth';
+// ADD: Functions imports
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import app from '../firebaseConfig'; // Ensure 'app' is exported from firebaseConfig
 import { Link } from 'react-router-dom';
 
 export default function ForgotPasswordPage() {
@@ -10,7 +12,6 @@ export default function ForgotPasswordPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Function to handle the password reset email sending
     const handleReset = async (e) => {
         e.preventDefault();
         setError('');
@@ -22,22 +23,24 @@ export default function ForgotPasswordPage() {
                 throw new Error("Please enter your email address.");
             }
             
-            // Firebase Auth function to send the reset email
-            await sendPasswordResetEmail(auth, email);
+            // --- NEW CODE: Call Cloud Function instead of Client SDK ---
+            const functions = getFunctions(app);
+            const sendResetEmailFn = httpsCallable(functions, 'sendPasswordReset');
+            
+            await sendResetEmailFn({ email });
+            // -----------------------------------------------------------
             
             setMessage("Success! Password reset link sent to your email. Please check your inbox.");
-            // Keep email field populated for convenience, but prevent resending immediately by checking 'message' state in button disabled prop.
 
         } catch (err) {
             console.error("Password reset error:", err);
-            let errorMessage = "An unknown error occurred.";
+            let errorMessage = "Failed to send reset link. Try again later.";
             
-            if (err.code === "auth/user-not-found") {
+            // Handle specific Cloud Function errors
+            if (err.message === "User not found" || err.code === "functions/not-found") {
                 errorMessage = "Email not found. Please check the address.";
             } else if (err.code === "auth/invalid-email") {
                  errorMessage = "Invalid email format.";
-            } else {
-                errorMessage = "Failed to send reset link. Try again later.";
             }
 
             setError(errorMessage);
@@ -46,9 +49,12 @@ export default function ForgotPasswordPage() {
         }
     };
 
+    // ... (Rest of the UI remains exactly the same)
     return (
+        // ... (Your existing JSX)
         <div className="h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#E6E6FA] to-purple-300">
-            <div className="w-full max-w-md bg-white rounded-3xl p-8 md:p-12 shadow-2xl animate-[slide-in_0.5s_ease-out]">
+            {/* ... keeping your existing UI code ... */}
+             <div className="w-full max-w-md bg-white rounded-3xl p-8 md:p-12 shadow-2xl animate-[slide-in_0.5s_ease-out]">
                 <div className="text-center mb-8">
                     <Mail className="w-12 h-12 text-purple-600 mx-auto mb-4" />
                     <h2 className="text-3xl font-bold text-gray-800 mb-2">Forgot Password?</h2>
@@ -56,7 +62,6 @@ export default function ForgotPasswordPage() {
                 </div>
                 
                 <form onSubmit={handleReset} className="space-y-6">
-
                     <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
                         <input
