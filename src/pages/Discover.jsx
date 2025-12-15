@@ -1,5 +1,5 @@
 import React, { useState, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
-import { MessageCircle, Ruler, Dumbbell, Cigarette, Wine, Sparkles } from 'lucide-react';
+import { Ruler, Dumbbell, Cigarette, Wine, Sparkles } from 'lucide-react';
 import { 
     collection, 
     onSnapshot, 
@@ -9,11 +9,14 @@ import {
     orderBy, 
     setDoc, 
     serverTimestamp,
-    limit 
+    limit,
+    getDoc,
+    updateDoc,
+    increment
 } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 
-// --- SVG Icons (Original) ---
+// --- CUSTOM SVG ICONS (Exact as provided) ---
 const X = ({ size = 24, strokeWidth = 2, className = '' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18M6 6l12 12" /></svg>
 );
@@ -25,6 +28,9 @@ const Star = ({ size = 24, fill = 'none', className = '' }) => (
 );
 const Undo2 = ({ size = 24, className = '' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" /></svg>
+);
+const MessageCircle = ({ size = 24, fill = 'none', className = '' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
 );
 const MapPin = ({ size = 24, className = '' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
@@ -54,6 +60,10 @@ const ChevronRight = ({ size = 24, className = '' }) => (
 const THEME_COLOR = 'oklch(49.6% 0.265 301.924)';
 const THEME_COLOR1 = 'oklch(19.2% 0.016 264.4)';
 
+// --- LIMITS CONFIGURATION ---
+const FREE_LIKES_LIMIT = 5;
+
+// --- Image Gallery ---
 const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const safeImages = (images && images.length > 0) 
@@ -94,6 +104,7 @@ const ImageGallery = ({ images, className = '', objectFit = 'object-cover' }) =>
     );
 };
 
+// --- Full Profile View ---
 const FullProfileView = ({ profile, onCollapse }) => {
     const basicsData = [
         { key: 'height', icon: Ruler, label: 'Height' },
@@ -142,6 +153,7 @@ const FullProfileView = ({ profile, onCollapse }) => {
     );
 };
 
+// --- Swipe Card ---
 const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -186,8 +198,8 @@ const SwipeCard = forwardRef(({ profile, onExpand, onSwipe, isTop }, ref) => {
     );
 });
 
-// --- ActionButtons (UI UNCHANGED) ---
-const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike }) => {
+// --- ActionButtons (UI EXACT as provided) ---
+const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike, onChat }) => {
     return (
         <div className="w-full pt-6 pb-4 sm:pb-8 px-4">
             <div className="flex items-center justify-center gap-4 md:gap-6">
@@ -217,7 +229,7 @@ const ActionButtons = ({ onRewind, onNope, onSuperLike, onLike }) => {
                     <Heart size={32} fill="white" />
                 </button>
                 <button 
-                    onClick={onLike} 
+                    onClick={onChat} 
                     className="flex-shrink-0 aspect-square flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95" 
                     style={{ backgroundColor: THEME_COLOR1 }}
                 >
@@ -250,7 +262,6 @@ const Discover = () => {
     useEffect(() => {
         if (!currentUserId || !preference) return;
         
-        // ADDED LIMIT(20) FOR PERFORMANCE
         const q = query(
             collection(db, 'users'), 
             where('gender', '==', preference), 
@@ -295,51 +306,117 @@ const Discover = () => {
         return () => unsubscribe();
     }, [currentUserId, preference]);
 
-    // --- LOGIC FIX: OPTIMISTIC UPDATE ---
-    const handleSwipe = (direction) => {
+    // --- USAGE CHECK LOGIC (UPDATED WITH MESSAGE CHECK) ---
+    const checkAndIncrementUsage = async (actionType) => {
+        if (!currentUserId) return false;
+        const subscriptionTier = currentUserData?.subscriptionTier || 'Free';
+        
+        // Tier checks
+        if (subscriptionTier === 'platinum') return true; 
+        if (subscriptionTier === 'gold' && actionType === 'like') return true; 
+        // Allow message for gold? Assuming free limit for now unless specified.
+        
+        if (subscriptionTier === 'Free' && (actionType === 'rewind' || actionType === 'superlike')) {
+            alert(`Upgrade to use ${actionType}!`);
+            return false;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const usageRef = doc(db, "users", currentUserId, "usage", "daily");
+        
+        try {
+            const usageSnap = await getDoc(usageRef);
+            let currentCount = 0;
+            if (usageSnap.exists()) {
+                const data = usageSnap.data();
+                if (data.date === today) currentCount = data[actionType] || 0;
+                else await setDoc(usageRef, { date: today, like: 0, superlike: 0, message: 0 });
+            } else {
+                await setDoc(usageRef, { date: today, like: 0, superlike: 0, message: 0 });
+            }
+
+            // --- LIMIT CHECKS ---
+            if (subscriptionTier === 'Free') {
+                if (actionType === 'like' && currentCount >= FREE_LIKES_LIMIT) {
+                    alert("Daily like limit reached!");
+                    return false;
+                }
+                // ADDED: Check for message/chat limit
+                if (actionType === 'message' && currentCount >= FREE_LIKES_LIMIT) {
+                    alert("Daily boost/message limit reached!");
+                    return false;
+                }
+            }
+
+            await updateDoc(usageRef, { [actionType]: increment(1), date: today });
+            return true;
+        } catch (error) {
+            console.error("Usage error:", error);
+            return true; 
+        }
+    };
+
+    const handleSwipe = async (direction) => {
         if (!currentUserId || profiles.length === 0) return;
+
+        // Permissions Check
+        if (direction === 'right') {
+            const allowed = await checkAndIncrementUsage('like');
+            if (!allowed) { window.location.reload(); return; }
+        } else if (direction === 'up') {
+             const allowed = await checkAndIncrementUsage('superlike');
+             if (!allowed) { window.location.reload(); return; }
+        }
 
         const swipedUser = profiles[profiles.length - 1];
         const swipedUserId = swipedUser.id;
 
-        // 1. Instant UI Update
+        // Optimistic UI update
         setTimeout(() => {
             setHistory((prev) => [...prev, swipedUser]); 
             setProfiles((prev) => prev.slice(0, -1));    
         }, 300);
 
-        // 2. Async DB Update (No Await)
-        if (direction === 'right') {
-            const saveSwipe = async () => {
-                try {
-                    await setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
-                        liked: true,
-                        timestamp: serverTimestamp()
-                    });
+        if (direction === 'right' || direction === 'up') {
+            try {
+                await setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
+                    liked: true,
+                    super: direction === 'up',
+                    timestamp: serverTimestamp()
+                });
 
-                    const chatId = [currentUserId, swipedUserId].sort().join("_");
-                    await setDoc(doc(db, "matches", chatId), {
-                        users: [currentUserId, swipedUserId],
-                        usersIncluded: {
-                            [currentUserId]: true,
-                            [swipedUserId]: true
-                        },
-                        timestamp: serverTimestamp(),
-                        lastMessage: "You matched! Say hi 👋"
-                    });
-                } catch (error) {
-                    console.error("Error processing swipe:", error);
-                }
-            };
-            saveSwipe();
+                const chatId = [currentUserId, swipedUserId].sort().join("_");
+                await setDoc(doc(db, "matches", chatId), {
+                    users: [currentUserId, swipedUserId],
+                    usersIncluded: { [currentUserId]: true, [swipedUserId]: true },
+                    timestamp: serverTimestamp(),
+                    lastMessage: "You matched! Say hi 👋"
+                });
+            } catch (error) {
+                console.error("Error processing swipe:", error);
+            }
         }
     };
 
-    const handleRewind = () => {
+    const handleRewind = async () => {
+        const allowed = await checkAndIncrementUsage('rewind');
+        if (!allowed) return;
+
         if (history.length === 0) return;
         const lastSwipedUser = history[history.length - 1];
         setHistory((prev) => prev.slice(0, -1));
         setProfiles((prev) => [...prev, lastSwipedUser]);
+    };
+
+    // --- UPDATED HANDLE CHAT ---
+    const handleChat = async () => {
+        // Now checks for 'message' action limits
+        const allowed = await checkAndIncrementUsage('message');
+        if (!allowed) return;
+
+        console.log("Direct message/Boost clicked");
+        // Your logic for the 5th button (e.g., instant match, boost, or open chat)
+        alert("Boost activated!"); 
     };
 
     const triggerSwipe = (direction) => {
@@ -352,7 +429,6 @@ const Discover = () => {
     };
 
     return (
-        // EXACT MOBILE HEIGHT FIX: 100dvh - 9rem
         <div className="mx-auto max-w-sm w-full h-[calc(100dvh-9rem)] flex flex-col mt-0 lg:mt-8 relative">
             <div className="flex-1 relative min-h-0">
                 <div className="absolute inset-0 p-4 sm:p-6">
@@ -384,6 +460,7 @@ const Discover = () => {
                     onNope={() => triggerSwipe('left')} 
                     onSuperLike={() => triggerSwipe('up')} 
                     onRewind={handleRewind} 
+                    onChat={handleChat}
                 />
             </div>
             

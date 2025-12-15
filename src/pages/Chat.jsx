@@ -22,7 +22,8 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc
+  updateDoc,
+  increment 
 } from "firebase/firestore";
 import {
   ref as storageRef,
@@ -30,6 +31,9 @@ import {
   getDownloadURL,
 } from "firebase/storage";
 import { ref as rtdbRef, onValue } from "firebase/database";
+
+// --- LIMIT CONFIG ---
+const FREE_MSG_LIMIT = 20;
 
 const customStyles = `
   .custom-scrollbar::-webkit-scrollbar { width: 5px; }
@@ -97,15 +101,27 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
                     name: userData.displayName || "User",
                     avatarUrl: (userData.photos && userData.photos[0]) || userData.avatarUrl || "https://placehold.co/100",
                     lastMessage: data.lastMessage || "Start chatting...",
-                    isFavorite: data.favorites?.[currentUserId] === true
+                    isFavorite: data.favorites?.[currentUserId] === true,
+                    timestamp: data.timestamp // 1. Grab the timestamp
                 };
             } catch (e) { return null; }
         });
 
         const results = await Promise.all(promises);
+        
+        // 2. Updated Sorting Logic
         const validUsers = results.filter(Boolean).sort((a, b) => {
-            if (a.isFavorite === b.isFavorite) return 0;
-            return a.isFavorite ? -1 : 1;
+            // First Priority: Favorites at the top
+            if (a.isFavorite !== b.isFavorite) {
+                return a.isFavorite ? -1 : 1;
+            }
+            
+            // Second Priority: Timestamp (Newest messages first)
+            // Using .seconds if Firestore Timestamp, defaulting to 0 if missing
+            const timeA = a.timestamp?.seconds || 0;
+            const timeB = b.timestamp?.seconds || 0;
+            
+            return timeB - timeA; // Descending order
         });
         
         setUsers(validUsers);
@@ -128,7 +144,6 @@ const ChatList = ({ setSelectedChat, selectedChatId, currentUserId }) => {
             placeholder="Search matches..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            // FIX: text-base for mobile, md:text-sm for laptop
             className="w-full pl-10 pr-4 py-2 bg-white/20 rounded-xl text-base md:text-sm text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 border-none"
           />
         </div>
@@ -214,14 +229,55 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
+  // --- CHECK MSG LIMIT ---
+  const checkMessageLimit = async () => {
+    try {
+        const userRef = doc(db, "users", currentUserId);
+        const userSnap = await getDoc(userRef);
+        const userData = userSnap.data();
+        const tier = userData?.subscriptionTier || 'Free';
+
+        if (tier === 'gold' || tier === 'platinum') return true;
+
+        const today = new Date().toISOString().split('T')[0];
+        const usageRef = doc(db, "users", currentUserId, "usage", "daily");
+        const usageSnap = await getDoc(usageRef);
+        
+        let currentCount = 0;
+        if (usageSnap.exists() && usageSnap.data().date === today) {
+            currentCount = usageSnap.data().msg || 0;
+        } else {
+            await setDoc(usageRef, { date: today, msg: 0 }, { merge: true });
+        }
+
+        if (currentCount >= FREE_MSG_LIMIT) {
+            alert("Daily message limit reached! Upgrade to Gold for unlimited chatting.");
+            return false;
+        }
+
+        await updateDoc(usageRef, { msg: increment(1), date: today });
+        return true;
+
+    } catch (e) {
+        console.error("Limit check error", e);
+        return true; 
+    }
+  };
+
   const handleSend = async () => {
     if (!messageText.trim()) return;
+    
+    // Check limit before sending
+    const allowed = await checkMessageLimit();
+    if (!allowed) return;
+
     try {
       const text = messageText;
       setMessageText(""); 
       await addDoc(collection(db, "chats", chatId, "messages"), {
         senderId: currentUserId, recipientId: chat.id, text, type: "text", createdAt: serverTimestamp(),
       });
+      // This updates the 'timestamp' in the matches document, which ChatList uses to sort.
       await setDoc(doc(db, "matches", chatId), { lastMessage: text, timestamp: serverTimestamp() }, { merge: true });
     } catch (e) { console.error(e); }
   };
@@ -231,9 +287,15 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
     setUploading(true);
     const fileRef = storageRef(storage, `chat_files/${chatId}/${Date.now()}_${file.name}`);
     uploadBytes(fileRef, file).then(snap => getDownloadURL(snap.ref)).then(async url => {
+       
+       const allowed = await checkMessageLimit();
+       if(!allowed) { setUploading(false); return; }
+
        await addDoc(collection(db, "chats", chatId, "messages"), {
          senderId: currentUserId, recipientId: chat.id, content: url, type: "image", createdAt: serverTimestamp(),
        });
+       // Also update timestamp for images
+       await setDoc(doc(db, "matches", chatId), { lastMessage: "Sent an image", timestamp: serverTimestamp() }, { merge: true });
        setUploading(false);
     });
   };
@@ -298,7 +360,6 @@ const IndividualChat = ({ chat, onBack, currentUserId }) => {
             onChange={(e) => setMessageText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             disabled={uploading}
-            // FIX: text-base for mobile, md:text-sm for laptop
             className="flex-1 bg-transparent border-none focus:ring-0 outline-none text-base md:text-sm text-gray-800 placeholder-gray-500"
           />
           
