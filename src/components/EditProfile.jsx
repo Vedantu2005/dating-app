@@ -971,8 +971,8 @@ export default function EditProfile({
   return (
     <div className="bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto bg-white min-h-screen">
-        <header className="border-b border-gray-200 sticky top-0 bg-white z-20">
-          {/* UPDATED: Changed px-6 to px-4 to match body content alignment */}
+        {/* --- FIXED: Sticky Header with adjusted top position --- */}
+        <header className="border-b border-gray-200 sticky top-16 lg:top-20 bg-white z-20 transition-all duration-300 shadow-sm">
           <div className="flex justify-between items-center px-4 lg:px-8 py-4">
             <button
               onClick={() => onNavigate && onNavigate("profile")}
@@ -993,7 +993,6 @@ export default function EditProfile({
               )}
             </button>
           </div>
-          {/* UPDATED: Changed px-6 to px-4 to match alignment */}
           <div className="flex px-4 lg:px-8">
             <button
               onClick={() => setActiveTab("edit")}
@@ -1276,7 +1275,7 @@ export default function EditProfile({
                 {[...Array(MAX_PHOTOS - photos.length)].map((_, i) => (
                   <button
                     key={`empty-${photos.length + i}`}
-                    onClick={() => setActiveModal("photoOptions")}
+                    onClick={handleGalleryUpload}
                     className="rounded-lg bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center hover:bg-gray-200 transition-colors p-2"
                     style={{ aspectRatio: "3/4" }}
                     disabled={isLoading}

@@ -1,4 +1,5 @@
-import React, { useState, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
+// FIX: Added forwardRef and useImperativeHandle to imports
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Ruler, Dumbbell, Cigarette, Wine, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -64,7 +65,7 @@ const THEME_COLOR1 = 'oklch(19.2% 0.016 264.4)';
 const FREE_SWIPES_LIMIT = 5;
 const FREE_SUPERLIKE_LIMIT = 2;
 
-// --- MODAL COMPONENT (Replaces Window.Confirm for smoothness) ---
+// --- MODAL COMPONENT ---
 const UpgradeModal = ({ isOpen, onClose, title, message }) => {
     const navigate = useNavigate();
     if (!isOpen) return null;
@@ -255,8 +256,7 @@ const Discover = () => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandedProfile, setExpandedProfile] = useState(null);
     const [currentUserData, setCurrentUserData] = useState(null);
-    // 1. INSTANT STATE for limits (No lagging wait time)
-    const [usageStats, setUsageStats] = useState({ swipes: 0, superlikes: 0 });
+    const [usageStats, setUsageStats] = useState({ swipes: 0, superlikes: 0 }); // Local state for immediate checks
     const [modalData, setModalData] = useState({ isOpen: false, title: "", message: "" });
     const topCardRef = useRef();
     const currentUserId = auth.currentUser?.uid;
@@ -270,7 +270,7 @@ const Discover = () => {
         return () => unsub();
     }, [currentUserId]);
 
-    // 2. REAL-TIME LISTENER for Usage Stats (Updates instantly in background)
+    // --- INSTANT USAGE SYNC (The Fix for Lag) ---
     useEffect(() => {
         if (!currentUserId) return;
         const today = new Date().toISOString().split('T')[0];
@@ -278,14 +278,14 @@ const Discover = () => {
 
         const unsubUsage = onSnapshot(usageRef, (docSnap) => {
             if (docSnap.exists() && docSnap.data().date === today) {
+                // Update local state instantly from DB
                 setUsageStats({
                     swipes: docSnap.data().swipes || 0,
                     superlikes: docSnap.data().superlikes || 0
                 });
             } else {
-                // If date changed or no doc, reset stats locally
+                // Reset locally if new day (DB update handled in background)
                 setUsageStats({ swipes: 0, superlikes: 0 });
-                // We don't write to DB here to avoid loops, purely reading
             }
         });
         return () => unsubUsage();
@@ -294,13 +294,7 @@ const Discover = () => {
     // --- FETCH PROFILES LOGIC ---
     useEffect(() => {
         if (!currentUserId) return;
-        
-        const q = query(
-            collection(db, 'users'), 
-            orderBy("displayName", "asc"),
-            limit(500) 
-        );
-        
+        const q = query(collection(db, 'users'), orderBy("displayName", "asc"), limit(500));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedProfiles = snapshot.docs
                 .filter(doc => doc.id !== currentUserId) 
@@ -315,7 +309,6 @@ const Discover = () => {
                     }
                     if (validImages.length === 0) return null;
                     const displayAge = data.age ? data.age : "";
-
                     return {
                         id: doc.id,
                         name: data.displayName,
@@ -338,20 +331,19 @@ const Discover = () => {
                     };
                 })
                 .filter(profile => profile !== null);
-
             setProfiles(fetchedProfiles);
         });
         return () => unsubscribe();
     }, [currentUserId]); 
 
-    // --- NON-BLOCKING CHECK ---
+    // --- SYNCHRONOUS CHECK (0ms Delay) ---
     const checkUsageInstant = (actionType) => {
         const subscriptionTier = currentUserData?.subscriptionTier || 'Free';
 
         // 1. PLATINUM (Unlimited Everything)
         if (subscriptionTier === 'platinum') return true;
 
-        // 2. GOLD (Unlimited Likes/Chat, Limited Rewind)
+        // 2. GOLD
         if (subscriptionTier === 'gold') {
             if (actionType === 'rewind') {
                 setModalData({ isOpen: true, title: "Upgrade to Platinum", message: "Rewind is exclusive to Platinum members!" });
@@ -363,12 +355,11 @@ const Discover = () => {
                     return false;
                 }
             }
-            return true; // Likes/Chat are unlimited
+            return true; 
         }
 
         // 3. FREE TIER
         if (subscriptionTier === 'Free') {
-            // Locked Features
             if (actionType === 'rewind') {
                 setModalData({ isOpen: true, title: "Rewind is Premium", message: "Upgrade to undo your last swipe." });
                 return false;
@@ -377,8 +368,6 @@ const Discover = () => {
                 setModalData({ isOpen: true, title: "Chat Locked", message: "Upgrade to Gold to message instantly." });
                 return false;
             }
-
-            // Limited Features
             if (actionType === 'like' || actionType === 'nope') {
                 if (usageStats.swipes >= FREE_SWIPES_LIMIT) {
                     setModalData({ isOpen: true, title: "Daily Limit Reached", message: `You've used your ${FREE_SWIPES_LIMIT} daily swipes. Upgrade to Gold for Unlimited!` });
@@ -395,23 +384,17 @@ const Discover = () => {
         return true;
     };
 
-    // --- BACKGROUND UPDATE (Fire & Forget) ---
+    // --- BACKGROUND UPDATE (No Await) ---
     const updateUsageBackground = async (actionType) => {
         const today = new Date().toISOString().split('T')[0];
         const usageRef = doc(db, "users", currentUserId, "usage", "daily");
-        
         try {
-            // Ensure document exists
             await setDoc(usageRef, { date: today }, { merge: true });
-
             const updates = { date: today };
             if (actionType === 'like' || actionType === 'nope') updates.swipes = increment(1);
             if (actionType === 'superlike') updates.superlikes = increment(1);
-            
             await updateDoc(usageRef, updates);
-        } catch (error) {
-            console.error("Background update error:", error);
-        }
+        } catch (error) { console.error(error); }
     };
 
     const handleSwipe = (direction) => {
@@ -421,42 +404,34 @@ const Discover = () => {
         if (direction === 'left') actionType = 'nope';
         if (direction === 'up') actionType = 'superlike';
 
-        // 1. INSTANT CHECK (No lag)
+        // 1. INSTANT CHECK
         if (!checkUsageInstant(actionType)) return;
 
-        // 2. UPDATE UI INSTANTLY
-        const swipedUser = profiles[profiles.length - 1];
-        const swipedUserId = swipedUser.id;
-
-        // Optimistically update local stats to prevent rapid-fire clicking bypass
+        // 2. OPTIMISTIC UPDATE (Update local state instantly so spam clicking is blocked)
         if (actionType === 'like' || actionType === 'nope') {
             setUsageStats(prev => ({ ...prev, swipes: prev.swipes + 1 }));
         } else if (actionType === 'superlike') {
             setUsageStats(prev => ({ ...prev, superlikes: prev.superlikes + 1 }));
         }
 
+        // 3. UI UPDATE (Animation)
+        const swipedUser = profiles[profiles.length - 1];
+        const swipedUserId = swipedUser.id;
         setTimeout(() => {
             setHistory((prev) => [...prev, swipedUser]); 
             setProfiles((prev) => prev.slice(0, -1));    
         }, 200);
 
-        // 3. BACKGROUND UPDATES (DB)
+        // 4. BACKGROUND DB WRITES (Don't wait for these)
         updateUsageBackground(actionType);
 
         if (direction === 'right' || direction === 'up') {
-            // Fire and forget match creation
             setDoc(doc(db, "users", currentUserId, "swipes", swipedUserId), {
-                liked: true,
-                super: direction === 'up',
-                timestamp: serverTimestamp()
+                liked: true, super: direction === 'up', timestamp: serverTimestamp()
             });
-
             const chatId = [currentUserId, swipedUserId].sort().join("_");
             setDoc(doc(db, "matches", chatId), {
-                users: [currentUserId, swipedUserId],
-                usersIncluded: { [currentUserId]: true, [swipedUserId]: true },
-                timestamp: serverTimestamp(),
-                lastMessage: "You matched! Say hi 👋"
+                users: [currentUserId, swipedUserId], usersIncluded: { [currentUserId]: true, [swipedUserId]: true }, timestamp: serverTimestamp(), lastMessage: "You matched! Say hi 👋"
             });
         }
     };
@@ -464,7 +439,6 @@ const Discover = () => {
     const handleRewind = () => {
         if (!checkUsageInstant('rewind')) return;
         if (history.length === 0) return;
-        
         const lastSwipedUser = history[history.length - 1];
         setHistory((prev) => prev.slice(0, -1));
         setProfiles((prev) => [...prev, lastSwipedUser]);
@@ -476,7 +450,6 @@ const Discover = () => {
     };
 
     const triggerSwipe = (direction) => {
-        // Pre-check before animation trigger
         let actionType = 'like';
         if (direction === 'left') actionType = 'nope';
         if (direction === 'up') actionType = 'superlike';
@@ -509,7 +482,7 @@ const Discover = () => {
                                 ref={index === profiles.length - 1 ? topCardRef : null}
                                 profile={profile}
                                 onExpand={() => handleExpand(profile)}
-                                onSwipe={handleSwipe} // This calls handleSwipe when card physically leaves screen
+                                onSwipe={handleSwipe}
                                 isTop={index === profiles.length - 1}
                             />
                         ))
